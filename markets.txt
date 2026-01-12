@@ -6,9 +6,11 @@ https://polymarket.com/event/will-trump-acquire-greenland-before-2027
 https://kalshi.com/markets/kxdjtvostariffs/tariffs-case/kxdjtvostariffs
 
 [Federal Reserve - Meetings]
-https://kalshi.com/markets/KXFED-26JAN/fed-funds-rate-after-january-meeting
-https://kalshi.com/markets/KXFEDDECISION-26JAN/fed-decision-in-january
 https://polymarket.com/event/fed-decision-in-january
+https://polymarket.com/event/fed-decision-in-march-885
+https://polymarket.com/event/fed-decision-in-april
+https://polymarket.com/event/fed-decision-in-june-825
 
 [Federal Reserve - Leadership]
 https://polymarket.com/event/who-will-trump-nominate-as-fed-chair
+https://kalshi.com/markets/kxleavepowellgov/jerome-powell-leave-as-fed-governor/kxleavepowellgov-26aug01

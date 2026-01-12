@@ -95,156 +95,128 @@ if 'kalshi_session' not in st.session_state:
 def apply_custom_style():
     st.markdown("""
         <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;500;700&display=swap');
         
-        /* Theme Variables */
         :root {
-            --sa-bg: #fff;
-            --sa-text: #1e293b;
-            --sa-subtext: #475569;
-            --sa-border: #e2e8f0;
-            --sa-header-bg: linear-gradient(90deg, #f8fafc 0%, #f1f5f9 100%);
-            --sa-accent: #d97706;
-            --sa-source: #0284c7;
-            --sa-price: #d97706;
-            --sa-tab-active: #d97706;
-            --sa-tab-text: #475569;
-        }
-
-        @media (prefers-color-scheme: dark) {
-            :root {
-                --sa-bg: #0e1117;
-                --sa-text: #f8fafc;
-                --sa-subtext: #94a3b8;
-                --sa-border: #1e293b;
-                --sa-header-bg: linear-gradient(90deg, #1e293b 0%, #0f172a 100%);
-                --sa-accent: #fbbf24;
-                --sa-source: #38bdf8;
-                --sa-price: #fbbf24;
-                --sa-tab-active: #fbbf24;
-                --sa-tab-text: #cbd5e1;
-            }
+            --bb-bg: #000000;
+            --bb-row-hover: #1a1a1a;
+            --bb-header-bg: #1c1c1c;
+            --bb-text: #ffffff;
+            --bb-subtext: #cccccc;
+            --bb-accent: #ff9900; /* Orange for tickers/titles */
+            --bb-purple: #4a148c; /* Purple for sub-headers */
+            --bb-yellow: #ffff00; /* Yellow for values */
+            --bb-pos: #00ff66;
+            --bb-neg: #ff3344;
+            --bb-border: #333333;
         }
 
         .stApp {
-            font-family: 'Inter', sans-serif !important;
+            background-color: var(--bb-bg) !important;
+            color: var(--bb-text) !important;
+            font-family: 'Roboto Mono', monospace !important;
         }
 
-        /* Modern Section Headers */
-        .bb-header {
-            background: var(--sa-header-bg) !important;
-            color: var(--sa-accent) !important;
-            padding: 10px 16px !important;
-            font-weight: 700 !important;
-            font-size: 15px !important;
-            margin-top: 32px !important;
-            margin-bottom: 8px !important;
-            border-left: 4px solid var(--sa-accent) !important;
-            border-radius: 4px !important;
-            text-transform: uppercase !important;
-            letter-spacing: 0.05em !important;
-            display: block !important;
-            width: 100% !important;
-            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
-        }
-        
-        .bb-subheader {
-            background-color: transparent !important;
-            color: var(--sa-subtext) !important;
-            padding: 6px 0 !important;
-            font-size: 11px !important;
-            font-weight: 700 !important;
-            text-transform: uppercase !important;
-            letter-spacing: 0.1em !important;
-            border-bottom: 1px solid var(--sa-border) !important;
-            margin-bottom: 12px !important;
-        }
-
-        /* Chart Tabs Visibility Fix */
-        button[data-baseweb="tab"] {
-            padding: 10px 20px !important;
-        }
-        
-        button[data-baseweb="tab"] p {
+        /* Bloomberg Section Headers */
+        .bb-cat-header {
+            background-color: #000000 !important;
+            color: #ffff00 !important;
+            padding: 4px 8px !important;
             font-weight: 700 !important;
             font-size: 13px !important;
-            color: var(--sa-tab-text) !important;
+            border-bottom: 2px solid #ffff00 !important;
+            margin-top: 10px !important;
+            text-transform: uppercase !important;
         }
         
-        button[aria-selected="true"] p {
-            color: var(--sa-tab-active) !important;
+        .bb-subcat-header {
+            background-color: #311b92 !important;
+            color: #ffffff !important;
+            padding: 2px 8px !important;
+            font-size: 12px !important;
+            font-weight: 600 !important;
         }
 
-        /* Value Colors */
-        .bb-value-pos { color: #10b981 !important; font-weight: 600 !important; }
-        .bb-value-neg { color: #ef4444 !important; font-weight: 600 !important; }
-        .bb-value-neutral { color: var(--sa-subtext) !important; }
-        
-        .market-name { color: var(--sa-text) !important; font-weight: 600 !important; font-size: 14px !important; margin-bottom: 2px !important; }
-        .contract-name { color: var(--sa-subtext) !important; font-size: 11px !important; font-weight: 400 !important; }
-        
-        .source-tag { 
-            font-size: 10px !important; 
-            color: var(--sa-source) !important; 
-            font-weight: 700 !important; 
-            border: 1px solid var(--sa-source) !important; 
-            padding: 2px 6px !important; 
-            border-radius: 4px !important; 
-            background: transparent !important;
+        /* Table Row Styling */
+        .bb-row {
+            display: flex;
+            align-items: center;
+            border-bottom: 1px solid var(--bb-border);
+            padding: 2px 0;
+            transition: background 0.1s;
         }
-        
-        .price-val { font-weight: 700 !important; font-size: 17px !important; color: var(--sa-price) !important; }
+        .bb-row:hover {
+            background-color: var(--bb-row-hover) !important;
+        }
 
-        /* Expander Improvements */
+        .bb-cell {
+            padding: 0 4px;
+            font-size: 11px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .bb-ticker { color: var(--bb-accent); font-weight: 600; }
+        .bb-value { color: var(--bb-yellow); font-weight: 600; text-align: right; }
+        .bb-pos { color: var(--bb-pos); text-align: right; }
+        .bb-neg { color: var(--bb-neg); text-align: right; }
+        .bb-vol { color: #ff00ff; text-align: right; } /* Pinkish for volume */
+        .bb-source { color: #00ffff; font-size: 9px; }
+
+        /* Expander/Dropdown Tweak */
         .stExpander {
+            background-color: transparent !important;
             border: none !important;
-            border-bottom: 1px solid var(--sa-border) !important;
+            margin-bottom: 0px !important;
+        }
+        .stExpander summary {
+            background-color: transparent !important;
+            color: var(--bb-text) !important;
+            padding: 2px 0 !important;
+            border-bottom: 1px solid #1a1a1a !important;
+        }
+        .stExpander summary:hover {
+            background-color: #111 !important;
+        }
+        .stExpander summary p {
+            font-family: 'Roboto Mono', monospace !important;
+            font-size: 11px !important;
+            color: inherit !important;
+            margin: 0 !important;
+            white-space: pre-wrap !important; /* Allow wrapping */
+            display: inline-block !important;
+            width: 100% !important;
+        }
+        .stExpander summary svg {
+            fill: #444 !important;
+            margin-right: 10px !important;
         }
         
-        [data-testid="stExpanderDetails"] {
-            border-radius: 0 0 8px 8px !important;
-            padding: 20px !important;
+        .stExpander [data-testid="stExpanderDetails"] {
+            border: none !important;
+            padding: 10px 0 !important;
+        }
+        
+        /* Remove default streamlit padding */
+        [data-testid="stVerticalBlock"] > div {
+            padding-top: 0px !important;
+            padding-bottom: 0px !important;
+        }
+        
+        .stMarkdown div p {
+            margin-bottom: 0px !important;
         }
 
-        /* Links */
-        .source-url-link {
-            color: var(--sa-source) !important;
-            text-decoration: none !important;
-            font-weight: 600 !important;
-        }
-        .source-url-link:hover {
-            text-decoration: underline !important;
+        /* Custom Arrow */
+        .bb-arrow {
+            display: inline-block;
+            margin-right: 5px;
+            font-size: 10px;
+            color: #888;
         }
 
-        /* Modern Input/Buttons */
-        .stTextInput input {
-            border: 1px solid var(--sa-border) !important;
-            border-radius: 8px !important;
-        }
-        
-        .stButton button {
-            background: var(--sa-header-bg) !important;
-            color: var(--sa-accent) !important;
-            border: 1px solid var(--sa-border) !important;
-            border-radius: 8px !important;
-            font-weight: 600 !important;
-            transition: all 0.2s !important;
-        }
-        
-        .stButton button:hover {
-            border-color: var(--sa-accent) !important;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.05) !important;
-        }
-
-        /* Hide streamlit elements */
-        #MainMenu {visibility: hidden;}
-        footer {visibility: hidden;}
-        [data-testid="stDecoration"] {display: none;}
-        
-        hr {
-            border-top: 1px solid var(--sa-border) !important;
-            margin: 10px 0 !important;
-        }
+        hr { border-top: 1px solid #222; margin: 2px 0 !important; }
         </style>
     """, unsafe_allow_html=True)
 
@@ -282,7 +254,7 @@ def get_changes(marker_id, current_price, history_dict=None):
     # Use provided history or fall back to local cache
     history = history_dict if history_dict else load_history().get(marker_id, {})
     if not history or len(history) < 2:
-        return 0.0, 0.0
+        return 0.0, 0.0, 0.0
     
     try:
         # Convert keys to datetimes and sort
@@ -298,22 +270,24 @@ def get_changes(marker_id, current_price, history_dict=None):
             if not past_points.empty:
                 # Return the most recent point before target
                 return past_points.iloc[-1]['Price']
-            # Fallback for very new markets: return the first data point if it's older than 1hr
-            elif not df.empty and (now - df.iloc[0]['Date']).total_seconds() > 3600:
-                return df.iloc[0]['Price']
+            # Fallback for very new markets
             return None
 
         p1d = get_past_val(1)
-        p5d = get_past_val(5)
+        p7d = get_past_val(7)
+        p30d = get_past_val(30)
         
-        if p1d is None and len(df) > 1:
+        # If no data for a timeframe, use the oldest available point if it's "close enough" 
+        # but for now let's just use first point as fallback for 1d if needed
+        if p1d is None and len(df) > 0:
             p1d = df.iloc[0]['Price']
             
         c1d = current_price - p1d if p1d is not None else 0.0
-        c5d = current_price - p5d if p5d is not None else 0.0
-        return c1d, c5d
+        c7d = current_price - p7d if p7d is not None else 0.0
+        c30d = current_price - p30d if p30d is not None else 0.0
+        return c1d, c7d, c30d
     except:
-        return 0.0, 0.0
+        return 0.0, 0.0, 0.0
 
 # --- DATA FETCHING ---
 
@@ -396,13 +370,19 @@ def fetch_kalshi_data(url):
             except: pass
             
         if not data:
-            return [{"id": f"err_{url}", "name": "Err", "contract": "Event Not Found", "value": 0, "source": "Error", "url": url}]
+            return [{"id": f"err_{url}", "event_id": f"err_ev_{url}", "name": "Err", "contract": "Event Not Found", "value": 0, "change_1d": 0, "change_7d": 0, "change_30d": 0, "volume": 0, "source": "Error", "url": url}]
             
         series_ticker = data.get('event', {}).get('series_ticker') if is_event else data.get('market', {}).get('series_ticker')
         if not series_ticker: series_ticker = event_ticker # Fallback
         
         markets_data = data.get('markets', []) if is_event else [data.get('market', data)]
-        event_title = data.get('event', {}).get('title', 'Kalshi Event') if is_event else data.get('market', {}).get('event_title', 'Kalshi Market')
+        
+        # Better title extraction
+        if is_event:
+            event_title = data.get('event', {}).get('title') or data.get('event', {}).get('event_title') or 'Kalshi Event'
+        else:
+            m_obj = data.get('market', data)
+            event_title = m_obj.get('event_title') or m_obj.get('title') or m_obj.get('subtitle') or 'Kalshi Market'
 
         results = []
         for m in markets_data:
@@ -442,25 +422,31 @@ def fetch_kalshi_data(url):
             if not history:
                 history = {datetime.now().isoformat(): val}
                 
-            c1d, c5d = get_changes(marker_id, val, history)
+            c1d, c7d, c30d = get_changes(marker_id, val, history)
             
+            # Volume filter
+            volume = m.get('volume', 0)
+            if volume < 2000: continue
+
             results.append({
                 "id": marker_id,
+                "event_id": f"kalshi_ev_{event_ticker}",
                 "name": event_title,
                 "contract": m.get('title', ''),
                 "value": val,
                 "change_1d": c1d,
-                "change_5d": c5d,
+                "change_7d": c7d,
+                "change_30d": c30d,
                 "low_30d": m.get('floor_price', 0),
                 "high_30d": m.get('cap_price', 100),
-                "volume": m.get('volume', 0),
+                "volume": volume,
                 "source": "Kalshi",
                 "url": url,
                 "history_data": history
             })
         return results
     except Exception as e:
-        return [{"id": f"err_{url}", "name": "Error", "contract": str(e), "value": 0, "source": "Error", "url": url, "history_data": {}}]
+        return [{"id": f"err_{url}", "event_id": f"err_ev_{url}", "name": "Error", "contract": str(e), "value": 0, "change_1d": 0, "change_7d": 0, "change_30d": 0, "volume": 0, "source": "Error", "url": url, "history_data": {}}]
 
 def fetch_polymarket_data(url):
     try:
@@ -475,7 +461,7 @@ def fetch_polymarket_data(url):
              resp = requests.get(api_url, timeout=10)
         
         data = resp.json()
-        if not data: return []
+        if not data: return [{"id": f"err_{url}", "event_id": f"err_ev_{url}", "name": "Err", "contract": "Polymarket Not Found", "value": 0, "change_1d": 0, "change_7d": 0, "change_30d": 0, "volume": 0, "source": "Error", "url": url}]
         
         markets_data = data.get('markets', [data] if 'question' in data else [])
         event_title = data.get('title', data.get('question', 'Polymarket'))
@@ -514,43 +500,33 @@ def fetch_polymarket_data(url):
             if not history:
                 history = {datetime.now().isoformat(): val}
                 
-            c1d, c5d = get_changes(marker_id, val, history)
+            c1d, c7d, c30d = get_changes(marker_id, val, history)
             
+            # Volume filter
+            volume = float(m.get('volume', 0))
+            if volume < 2000: continue
+
             results.append({
                 "id": marker_id,
+                "event_id": f"poly_ev_{slug}",
                 "name": event_title,
                 "contract": m.get('groupItemTitle', m.get('question', '')),
                 "value": val,
                 "change_1d": c1d,
-                "change_5d": c5d,
+                "change_7d": c7d,
+                "change_30d": c30d,
                 "low_30d": 0,
                 "high_30d": 100,
-                "volume": float(m.get('volume', 0)),
+                "volume": volume,
                 "source": "PolyM",
                 "url": url,
                 "history_data": history
             })
         return results
     except Exception as e:
-        return [{"id": f"err_{url}", "name": "Error", "contract": str(e), "value": 0, "source": "Error", "url": url, "history_data": {}}]
+        return [{"id": f"err_{url}", "event_id": f"err_ev_{url}", "name": "Error", "contract": str(e), "value": 0, "change_1d": 0, "change_7d": 0, "change_30d": 0, "volume": 0, "source": "Error", "url": url, "history_data": {}}]
 
 # --- COMPONENTS ---
-
-def render_range_bar(low, high, current):
-    safe_current = max(low, min(high, current))
-    total_range = high - low if high > low else 100
-    pos = ((safe_current - low) / total_range) * 100
-    
-    return f"""
-    <div style="display: flex; align-items: center; justify-content: space-between; font-size: 10px; color: #555; min-width: 120px;">
-        <span style="color: #ff3344;">{low:.0f}</span>
-        <div style="flex-grow: 1; height: 3px; background: #222; margin: 0 6px; position: relative; border-radius: 2px;">
-            <div style="position: absolute; left: 0; width: 100%; height: 100%; border-left: 1px solid #444; border-right: 1px solid #444;"></div>
-            <div style="position: absolute; left: {pos}%; top: -4px; width: 4px; height: 11px; background: #55aaff; border-radius: 1px; box-shadow: 0 0 5px #55aaff88;"></div>
-        </div>
-        <span style="color: #00ff66;">{high:.0f}</span>
-    </div>
-    """
 
 def render_plotly_chart(marker_id, name, history_data=None):
     history = history_data if history_data else {}
@@ -569,17 +545,18 @@ def render_plotly_chart(marker_id, name, history_data=None):
         fig.add_trace(go.Scatter(
             x=data['Date'], y=data['Price'],
             fill='tozeroy',
-            line=dict(color='#0ea5e9', width=2.5), # Vibrant Sky Blue
-            fillcolor='rgba(14, 165, 233, 0.1)',
+            line=dict(color='#ff9900', width=2), # Bloomberg Orange
+            fillcolor='rgba(255, 153, 0, 0.1)',
             hovertemplate='Price: %{y:.1f}%<br>Date: %{x}<extra></extra>'
         ))
         fig.update_layout(
             paper_bgcolor='rgba(0,0,0,0)',
             plot_bgcolor='rgba(0,0,0,0)',
             margin=dict(l=0, r=0, t=10, b=0),
-            height=220,
-            xaxis=dict(showgrid=False, title=""),
-            yaxis=dict(showgrid=True, gridcolor='rgba(128, 128, 128, 0.1)', title="", range=[0, 101]),
+            height=200,
+            template='plotly_dark',
+            xaxis=dict(showgrid=False, title="", tickfont=dict(color='#888', size=10)),
+            yaxis=dict(showgrid=True, gridcolor='rgba(255, 255, 255, 0.1)', title="", range=[0, 101], tickfont=dict(color='#888', size=10)),
             hovermode="x unified",
         )
         st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False}, key=f"chart_{marker_id}_{title_suffix}")
@@ -609,106 +586,107 @@ def render_plotly_chart(marker_id, name, history_data=None):
 # --- MAIN APP ---
 
 def main():
-    st.set_page_config(page_title="SA Prediction Markets Dashboard", layout="wide", initial_sidebar_state="collapsed")
+    st.set_page_config(page_title="SA Predict Dashboard", layout="wide", initial_sidebar_state="collapsed")
     apply_custom_style()
     
     # Top Bar
-    t1, t2, t3 = st.columns([2, 2, 1])
-    with t1:
-        st.markdown("<div style='font-size: 24px; font-weight: bold; color: #ffcc00; margin-top: 5px;'>SA PREDICT <span style='color: #888; font-weight: normal; font-size: 14px; margin-left: 10px;'>Dashboard</span></div>", unsafe_allow_html=True)
-    with t2:
-        search = st.text_input("Search Tickers...", placeholder="e.g. Fed, Trump, Rates", label_visibility="collapsed")
-    with t3:
-        if st.button("↻ REFRESH", use_container_width=True):
-            st.rerun()
+    st.markdown("<div style='color: #ffcc00; font-size: 24px; font-weight: bold; margin-bottom: 20px;'>SA <span style='color: #fff; font-weight: normal;'>Predict</span></div>", unsafe_allow_html=True)
 
     market_configs = parse_markets_file()
     if not market_configs:
-        st.info("💡 Add market URLs to `markets.txt` to get started.")
+        st.info("Add URLs to markets.txt")
         return
 
-    grouped_data = {}
-    with st.spinner("FETCHING REAL-TIME PRICES..."):
+    # Data Fetching
+    all_items = []
+    with st.spinner("UPDATING..."):
         for config in market_configs:
-            cat = config['category']
-            if cat not in grouped_data: grouped_data[cat] = []
-            
             if config['platform'] == "Kalshi":
                 markets = fetch_kalshi_data(config['url'])
             else:
                 markets = fetch_polymarket_data(config['url'])
                 
             for m in markets:
-                if search and search.lower() not in m['name'].lower() and search.lower() not in m['contract'].lower():
-                    continue
+                m['category'] = config['category']
                 m['subcategory'] = config['subcategory']
-                grouped_data[cat].append(m)
+                all_items.append(m)
 
-    # Render Categories
-    for cat_name, items in grouped_data.items():
-        if not items: 
-            continue
-        
-        st.markdown(f"<div class='bb-header'>{cat_name}</div>", unsafe_allow_html=True)
-        
-        # Column Headers: Concept, Price, 1D, 5D, Range, Vol, Update, Src
-        h_cols = st.columns([0.35, 0.1, 0.08, 0.08, 0.15, 0.1, 0.1, 0.04])
-        headers = ["CONCEPT / EVENT", "PRICE", "1D", "5D", "RANGE", "VOL", "UPDATE", "SRC"]
-        for col, text in zip(h_cols, headers):
-            col.markdown(f"<div style='color: #888; font-size: 11px; font-weight: bold; padding: 10px 0;'>{text}</div>", unsafe_allow_html=True)
-        
-        current_sub = None
-        for item in items:
-            if item.get('subcategory') != current_sub:
-                current_sub = item.get('subcategory')
-                if current_sub:
-                    st.markdown(f"<div class='bb-subheader'>{current_sub}</div>", unsafe_allow_html=True)
-            
-            # Prepare data with safe defaults
-            val = item.get('value', 0)
-            c1d = item.get('change_1d', 0)
-            c5d = item.get('change_5d', 0)
-            low_30 = item.get('low_30d', 0)
-            high_30 = item.get('high_30d', 100)
-            vol = item.get('volume', 0)
-            source = item.get('source', 'Unknown')
-            m_url = item.get('url', '#')
-            m_id = item.get('id', 'unknown')
-            m_name = item.get('name', 'Unknown')
-            m_contract = item.get('contract', '')
-            
-            c1d_cls = "bb-value-pos" if c1d > 0 else "bb-value-neg" if c1d < 0 else "bb-value-neutral"
-            c5d_cls = "bb-value-pos" if c5d > 0 else "bb-value-neg" if c5d < 0 else "bb-value-neutral"
-            vol_str = f"{vol/1e6:.1f}M" if vol >= 1e6 else f"{vol/1e3:.0f}k" if vol >= 1e3 else str(int(vol))
-            time_str = datetime.now().strftime("%H:%M")
-            source_color = "#ff3344" if source == "Error" else "#55aaff"
+    if not all_items:
+        st.warning("No data found matching criteria.")
+        return
 
-            # Create a clean data row using st.columns
-            r_cols = st.columns([0.35, 0.1, 0.08, 0.08, 0.15, 0.1, 0.1, 0.04])
+    # Grouping by Category -> Subcategory -> Event
+    structured_data = {}
+    for item in all_items:
+        cat = item['category']
+        sub = item['subcategory'] or "GENERAL"
+        ev_id = item['event_id']
+        
+        if cat not in structured_data: structured_data[cat] = {}
+        if sub not in structured_data[cat]: structured_data[cat][sub] = {}
+        if ev_id not in structured_data[cat][sub]: structured_data[cat][sub][ev_id] = []
+        
+        structured_data[cat][sub][ev_id].append(item)
+
+    def format_row(m, indent=False, is_header=False):
+        # Layout: Name (100), Value (8), d/d (8), w/w (8), m/m (8), Vol (10), Src (10), Upd (8)
+        col_w = 100
+        if is_header:
+            name = f"{'Concept / Market':<{col_w}}"
+            v = f"{'Value':>8}"
+            c1 = f"{'d/d':>8}"
+            c7 = f"{'w/w':>8}"
+            c30 = f"{'m/m':>8}"
+            vol = f"{'Volume':>10}"
+            upd = f"{'Update':>8}"
+            src = f"{'Src':>10}"
+            return f"  {name} {v} {c1} {c7} {c30} {vol} {upd} {src}"
+
+        name = m['name'] if not indent else m['contract']
+        if indent: 
+            name = f"  {name}"
+        
+        # Avoid hard truncation if possible, just pad
+        name_str = f"{name:<{col_w}}"
+        
+        v = f"{m['value']:>7.1f}%"
+        c1 = f"{m['change_1d']:>+7.1f}"
+        c7 = f"{m['change_7d']:>+7.1f}"
+        c30 = f"{m['change_30d']:>+7.1f}"
+        
+        vol = m['volume']
+        vol_str = f"{vol/1e6:5.1f}M" if vol >= 1e6 else f"{vol/1e3:5.0f}k" if vol >= 1e3 else f"{int(vol):>6}"
+        vol_str = f"{vol_str:>10}"
+        
+        upd = datetime.now().strftime("%H:%M")
+        upd_str = f"{upd:>8}"
+        
+        src = f"{m['source']:>10}"
+        return f"{name_str} {v} {c1} {c7} {c30} {vol_str} {upd_str} {src}"
+
+    # Draw Global Header
+    st.markdown(f"<div style='font-family: monospace; font-size: 11px; color: #888; padding: 4px 0; border-bottom: 2px solid #333; white-space: pre;'>{format_row(None, is_header=True)}</div>", unsafe_allow_html=True)
+
+    # Render Content
+    for cat_name, subcats in structured_data.items():
+        st.markdown(f"<div class='bb-cat-header'>{cat_name}</div>", unsafe_allow_html=True)
+        
+        for sub_name, events in subcats.items():
+            st.markdown(f"<div class='bb-subcat-header'>{sub_name}</div>", unsafe_allow_html=True)
             
-            with r_cols[0]:
-                st.markdown(f"<div class='market-name' style='line-height:1.2; font-size:13px;'>{m_name}</div>", unsafe_allow_html=True)
-                st.markdown(f"<div class='contract-name' style='font-size:10px;'>{m_contract}</div>", unsafe_allow_html=True)
-            
-            r_cols[1].markdown(f"<div style='text-align: right; color: #fbbf24; font-weight: 700; font-size:16px; padding-top:4px;'>{val:.1f}%</div>", unsafe_allow_html=True)
-            r_cols[2].markdown(f"<div style='text-align: right; padding-top:7px;' class='{c1d_cls}'>{c1d:+.1f}</div>", unsafe_allow_html=True)
-            r_cols[3].markdown(f"<div style='text-align: right; padding-top:7px;' class='{c5d_cls}'>{c5d:+.1f}</div>", unsafe_allow_html=True)
-            
-            with r_cols[4]:
-                st.markdown("<div style='padding-top:7px;'></div>", unsafe_allow_html=True)
-                st.markdown(render_range_bar(low_30, high_30, val), unsafe_allow_html=True)
-                
-            r_cols[5].markdown(f"<div style='text-align: right; color: #64748b; padding-top:7px; font-size: 12px;'>{vol_str}</div>", unsafe_allow_html=True)
-            r_cols[6].markdown(f"<div style='text-align: right; color: #475569; font-size: 11px; padding-top:7px;'>{time_str}</div>", unsafe_allow_html=True)
-            r_cols[7].markdown(f"<div style='text-align: right; padding-top:7px;'><span class='source-tag'>{source}</span></div>", unsafe_allow_html=True)
-            
-            # Expander for chart below the row
-            with st.expander(f"📊 DATA / CHART - {m_name}", expanded=False):
-                if source != "Error":
-                    render_plotly_chart(m_id, m_name, item.get('history_data'))
-                st.markdown(f"<div style='margin-top:15px; font-size:11px; color:var(--sa-subtext);'><b>Source URL:</b> <a href='{m_url}' target='_blank' class='source-url-link'>{m_url}</a></div>", unsafe_allow_html=True)
-            
-            st.markdown("<hr>", unsafe_allow_html=True)
+            for ev_id, markets in events.items():
+                # If multiple markets, the "Event" is a header
+                if len(markets) > 1:
+                    first = markets[0]
+                    # Use an expander as the header to allow collapsing the whole group
+                    with st.expander(first['name'], expanded=False):
+                        for m in markets:
+                            with st.expander(format_row(m, indent=True)):
+                                render_plotly_chart(m['id'], m['name'], m.get('history_data'))
+                else:
+                    m = markets[0]
+                    with st.expander(format_row(m)):
+                        render_plotly_chart(m['id'], m['name'], m.get('history_data'))
 
 if __name__ == "__main__":
     main()
