@@ -412,7 +412,23 @@ def fetch_polymarket_data(url):
     except Exception as e:
         return []
 
-# --- CHARTING ---
+# --- COMPONENTS ---
+
+def render_range_bar(low, high, current):
+    safe_current = max(low, min(high, current))
+    total_range = high - low if high > low else 100
+    pos = ((safe_current - low) / total_range) * 100
+    
+    return f"""
+    <div style="display: flex; align-items: center; justify-content: space-between; font-size: 10px; color: #555; min-width: 120px;">
+        <span style="color: #ff3344;">{low:.0f}</span>
+        <div style="flex-grow: 1; height: 3px; background: #222; margin: 0 6px; position: relative; border-radius: 2px;">
+            <div style="position: absolute; left: 0; width: 100%; height: 100%; border-left: 1px solid #444; border-right: 1px solid #444;"></div>
+            <div style="position: absolute; left: {pos}%; top: -4px; width: 4px; height: 11px; background: #55aaff; border-radius: 1px; box-shadow: 0 0 5px #55aaff88;"></div>
+        </div>
+        <span style="color: #00ff66;">{high:.0f}</span>
+    </div>
+    """
 
 def render_plotly_chart(marker_id, name):
     history = load_history().get(marker_id, {})
