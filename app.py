@@ -286,78 +286,63 @@ def fetch_kalshi_data(url):
         event_ticker = parts[idx+1]
         market_ticker = parts[-1] if len(parts) > idx + 3 else event_ticker
         
-        attempts = [
-            (f"https://api.elections.kalshi.com/trade-api/v2/events/{event_ticker}", "event"),
-            (f"https://api.kalshi.com/trade-api/v2/events/{event_ticker}", "event"),
-            (f"https://api.elections.kalshi.com/trade-api/v2/markets/{market_ticker}", "market"),
-            (f"https://api.kalshi.com/trade-api/v2/markets/{market_ticker}", "market")
-        ]
-        
-        data = None
-        for api_url, mode in attempts:
-            try:
-                resp = session.get(api_url, timeout=5)
-                if resp.status_code == 200:
-                    data = resp.json()
-                    is_event = (mode == "event")
-                    break
-            except:
-                continue
-        
-        if not data:
-            return [{
-                "id": f"err_{url}",
-                "name": "Connection Error",
-                "contract": "Could not reach Kalshi API",
-                "value": 0,
-                "buy_price": 0,
-                "change_1d": 0,
-                "change_5d": 0,
-                "low_30d": 0,
-                "high_30d": 100,
-                "volume": 0,
-                "source": "Error",
-                "url": url,
-                "history_data": {}
-            }]
-        
-        markets_data = data.get('markets', [data.get('market', data)]) if is_event else [data.get('market', data)]
-        event_title = data.get('event', {}).get('title', 'Kalshi Event') if is_event else data.get('market', {}).get('event_title', 'Kalshi Market')
+        # We need series_ticker for the candlestick endpoint
+        # Best way is to hit the event endpoint first
+        event_api = f"https://api.elections.kalshi.com/trade-api/v2/events/{event_ticker}"
+        resp = session.get(event_api, timeout=5)
+        if resp.status_code != 200:
+            # Fallback to direct market endpoint if event ticker doesn't work
+            event_api = f"https://api.kalshi.com/trade-api/v2/events/{event_ticker}"
+            resp = session.get(event_api, timeout=5)
+            
+        if resp.status_code != 200:
+            return [{"id": f"err_{url}", "name": "Err", "contract": "Event Not Found", "value": 0, "source": "Error", "url": url}]
+            
+        data = resp.json()
+        series_ticker = data.get('event', {}).get('series_ticker', event_ticker)
+        markets_data = data.get('markets', [])
+        event_title = data.get('event', {}).get('title', 'Kalshi Event')
 
         results = []
         for m in markets_data:
             if not m or not isinstance(m, dict): continue
-            if 'last_price' not in m and 'title' not in m: continue
             
             val = m.get('last_price', 0)
-            m_ticker = m.get('ticker', market_ticker)
+            m_ticker = m.get('ticker')
             
-            # Fetch Historical Candles for Chart
+            # Fetch Historical Candles
             history = {}
             try:
-                hist_url = f"https://api.kalshi.com/trade-api/v2/markets/{m_ticker}/candles?limit=30&period_interval=1440"
+                now = int(time.time())
+                start = now - (30 * 24 * 3600)
+                # Correct path: /series/{series_ticker}/markets/{ticker}/candlesticks
+                hist_url = f"https://api.elections.kalshi.com/trade-api/v2/series/{series_ticker}/markets/{m_ticker}/candlesticks?period_interval=1440&start_ts={start}&end_ts={now}"
                 h_resp = session.get(hist_url, timeout=5)
                 if h_resp.status_code == 200:
-                    candles = h_resp.json().get('candles', [])
+                    candles = h_resp.json().get('candlesticks', [])
                     for c in candles:
-                        ts = datetime.fromtimestamp(c['time']).strftime("%Y-%m-%d")
-                        history[ts] = float(c['close'])
+                        ts = datetime.fromtimestamp(c['end_period_ts']).strftime("%Y-%m-%d")
+                        # Try to get close price from multiple possible fields
+                        p = c.get('price', {}).get('close')
+                        if p is None: p = c.get('yes_ask', {}).get('close')
+                        if p is None: p = c.get('yes_bid', {}).get('close')
+                        if p is not None:
+                            history[ts] = float(p)
             except:
                 pass
             
             marker_id = f"kalshi_{m_ticker}"
             update_history(marker_id, val)
-            if not history: # Fallback to local history
+            if not history:
                 history = load_history().get(marker_id, {datetime.now().strftime("%Y-%m-%d"): val})
                 
             c1d, c5d = get_changes(marker_id, val)
             
             results.append({
                 "id": marker_id,
-                "name": m.get('event_title', event_title),
+                "name": event_title,
                 "contract": m.get('title', ''),
                 "value": val,
-                "buy_price": m.get('yes_ask', m.get('last_price', 0)),
                 "change_1d": c1d,
                 "change_5d": c5d,
                 "low_30d": m.get('floor_price', 0),
@@ -374,7 +359,6 @@ def fetch_kalshi_data(url):
             "name": "Kalshi Fetch Error",
             "contract": str(e)[:100],
             "value": 0,
-            "buy_price": 0,
             "change_1d": 0,
             "change_5d": 0,
             "low_30d": 0,
@@ -417,21 +401,29 @@ def fetch_polymarket_data(url):
             try: val = float(prices[0]) * 100 if prices and len(prices) > 0 else 0
             except: val = 0
             
-            m_id = m.get('conditionId', m.get('id', slug))
-            
-            # Fetch Historical Prices for Chart
+            # Fetch Historical Prices via CLOB API
             history = {}
             try:
-                hist_url = f"https://gamma-api.polymarket.com/pricehistory?market={m_id}"
-                h_resp = requests.get(hist_url, timeout=5)
-                if h_resp.status_code == 200:
-                    points = h_resp.json()
-                    for p in points:
-                        ts = datetime.fromtimestamp(p['t']).strftime("%Y-%m-%d")
-                        history[ts] = float(p['p']) * 100
+                clob_ids_raw = m.get('clobTokenIds', [])
+                if isinstance(clob_ids_raw, str):
+                    try: clob_ids = json.loads(clob_ids_raw)
+                    except: clob_ids = []
+                else:
+                    clob_ids = clob_ids_raw
+                
+                if clob_ids:
+                    clob_id = clob_ids[0] # Usually the first is 'Yes'
+                    hist_url = f"https://clob.polymarket.com/prices-history?market={clob_id}&interval=1d&fidelity=1440"
+                    h_resp = requests.get(hist_url, timeout=5)
+                    if h_resp.status_code == 200:
+                        points = h_resp.json().get('history', [])
+                        for p in points:
+                            ts = datetime.fromtimestamp(p['t']).strftime("%Y-%m-%d")
+                            history[ts] = float(p['p']) * 100
             except:
                 pass
 
+            m_id = m.get('conditionId', m.get('id', slug))
             marker_id = f"poly_{m_id}"
             update_history(marker_id, val)
             if not history:
@@ -444,7 +436,6 @@ def fetch_polymarket_data(url):
                 "name": event_title,
                 "contract": m.get('groupItemTitle', m.get('question', '')),
                 "value": val,
-                "buy_price": val, # Polymarket Price is the mid/last
                 "change_1d": c1d,
                 "change_5d": c5d,
                 "low_30d": 0,
@@ -461,7 +452,6 @@ def fetch_polymarket_data(url):
             "name": "Poly Fetch Error",
             "contract": str(e)[:100],
             "value": 0,
-            "buy_price": 0,
             "change_1d": 0,
             "change_5d": 0,
             "low_30d": 0,
