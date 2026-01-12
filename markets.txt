@@ -2,6 +2,9 @@
 https://polymarket.com/event/will-trump-acquire-greenland-before-2027
 
 [Macroeconomics & Central Banking]
+[Tariffs]
+https://kalshi.com/markets/kxdjtvostariffs/tariffs-case/kxdjtvostariffs
+
 [Federal Reserve - Meetings]
 https://kalshi.com/markets/KXFED-26JAN/fed-funds-rate-after-january-meeting
 https://kalshi.com/markets/KXFEDDECISION-26JAN/fed-decision-in-january
