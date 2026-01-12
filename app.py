@@ -95,94 +95,112 @@ if 'kalshi_session' not in st.session_state:
 def apply_custom_style():
     st.markdown("""
         <style>
-        @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;500;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
         
-        /* Dark Theme Overrides */
+        /* Premium Dark Theme */
         .stApp {
-            background-color: #000000 !important;
-            color: #ffffff !important;
-            font-family: 'Roboto Mono', monospace !important;
+            background-color: #0e1117 !important;
+            color: #fafafa !important;
+            font-family: 'Inter', sans-serif !important;
         }
 
         [data-testid="stHeader"] {
-            background-color: #000000 !important;
+            background-color: #0e1117 !important;
         }
 
-        /* Dashboard Headers */
+        /* Modern Section Headers */
         .bb-header {
-            background-color: #333333 !important;
-            color: #ffcc00 !important;
-            padding: 6px 12px !important;
-            font-weight: bold !important;
-            font-size: 14px !important;
-            margin-top: 24px !important;
-            border-bottom: 2px solid #555555 !important;
+            background: linear-gradient(90deg, #1e293b 0%, #0f172a 100%) !important;
+            color: #fbbf24 !important;
+            padding: 10px 16px !important;
+            font-weight: 700 !important;
+            font-size: 15px !important;
+            margin-top: 32px !important;
+            margin-bottom: 8px !important;
+            border-left: 4px solid #fbbf24 !important;
+            border-radius: 4px !important;
             text-transform: uppercase !important;
-            letter-spacing: 1px !important;
+            letter-spacing: 0.05em !important;
             display: block !important;
             width: 100% !important;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1) !important;
         }
         
         .bb-subheader {
-            background-color: #1a1a2e !important;
-            color: #e08aff !important;
-            padding: 4px 12px !important;
-            font-size: 13px !important;
-            font-weight: 500 !important;
-            border-bottom: 1px solid #333344 !important;
-        }
-
-        /* Table Grid */
-        .bb-table {
-            width: 100% !important;
-            border-collapse: collapse !important;
-            margin-bottom: 20px !important;
-        }
-        
-        .bb-table th {
-            text-align: left !important;
-            color: #aaaaaa !important;
-            border-bottom: 1px solid #333333 !important;
-            padding: 10px 12px !important;
-            font-weight: normal !important;
-            font-size: 12px !important;
+            background-color: rgba(30, 41, 59, 0.5) !important;
+            color: #cbd5e1 !important;
+            padding: 6px 16px !important;
+            font-size: 11px !important;
+            font-weight: 600 !important;
             text-transform: uppercase !important;
-        }
-        
-        .bb-table td {
-            padding: 8px 12px !important;
-            border-bottom: 1px solid #1a1a1a !important;
-            vertical-align: middle !important;
-            background-color: transparent !important;
+            letter-spacing: 0.1em !important;
+            border-bottom: 1px solid #334155 !important;
+            margin-bottom: 12px !important;
         }
 
-        .bb-value-pos { color: #00ff66 !important; }
-        .bb-value-neg { color: #ff3344 !important; }
-        .bb-value-neutral { color: #888888 !important; }
+        /* Clean Table Styles */
+        .bb-value-pos { color: #10b981 !important; font-weight: 600 !important; } /* Emerald */
+        .bb-value-neg { color: #ef4444 !important; font-weight: 600 !important; } /* Red */
+        .bb-value-neutral { color: #94a3b8 !important; }
         
-        .market-name { color: #ff9900 !important; font-weight: bold !important; font-size: 14px !important; margin-bottom: 2px !important; }
-        .contract-name { color: #cccccc !important; font-size: 12px !important; }
-        .source-tag { font-size: 11px !important; color: #55aaff !important; font-weight: bold !important; border: 1px solid #55aaff33 !important; padding: 1px 4px !important; border-radius: 2px !important; }
+        .market-name { color: #f8fafc !important; font-weight: 600 !important; font-size: 14px !important; margin-bottom: 2px !important; }
+        .contract-name { color: #94a3b8 !important; font-size: 11px !important; font-weight: 400 !important; }
+        .source-tag { 
+            font-size: 10px !important; 
+            color: #38bdf8 !important; 
+            font-weight: 700 !important; 
+            border: 1px solid rgba(56, 189, 248, 0.2) !important; 
+            padding: 2px 6px !important; 
+            border-radius: 4px !important; 
+            background: rgba(56, 189, 248, 0.05) !important;
+        }
         
-        .price-val { font-weight: 700 !important; font-size: 16px !important; color: #ffcc00 !important; }
+        .price-val { font-weight: 700 !important; font-size: 17px !important; color: #fbbf24 !important; }
 
-        /* Sidebar/Widgets */
+        /* Modern Input/Buttons */
         .stTextInput input {
-            background-color: #111 !important;
-            color: #fff !important;
-            border: 1px solid #333 !important;
+            background-color: #1e293b !important;
+            color: #f8fafc !important;
+            border: 1px solid #334155 !important;
+            border-radius: 8px !important;
         }
         
         .stButton button {
-            background-color: #222 !important;
-            color: #ffcc00 !important;
-            border: 1px solid #444 !important;
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%) !important;
+            color: #fbbf24 !important;
+            border: 1px solid #334155 !important;
+            border-radius: 8px !important;
+            font-weight: 600 !important;
+            transition: all 0.2s !important;
+        }
+        
+        .stButton button:hover {
+            border-color: #fbbf24 !important;
+            box-shadow: 0 0 10px rgba(251, 191, 36, 0.1) !important;
+        }
+
+        /* Expander Styling */
+        .stExpander {
+            background-color: transparent !important;
+            border: none !important;
+            border-bottom: 1px solid #1e293b !important;
+        }
+        
+        [data-testid="stExpanderDetails"] {
+            background-color: #0f172a !important;
+            border-radius: 0 0 8px 8px !important;
+            padding: 20px !important;
         }
 
         /* Hide streamlit elements */
         #MainMenu {visibility: hidden;}
         footer {visibility: hidden;}
         [data-testid="stDecoration"] {display: none;}
+        
+        hr {
+            border-top: 1px solid #1e293b !important;
+            margin: 10px 0 !important;
+        }
         </style>
     """, unsafe_allow_html=True)
 
@@ -607,25 +625,25 @@ def main():
                 st.markdown(f"<div class='market-name' style='line-height:1.2; font-size:13px;'>{m_name}</div>", unsafe_allow_html=True)
                 st.markdown(f"<div class='contract-name' style='font-size:10px;'>{m_contract}</div>", unsafe_allow_html=True)
             
-            r_cols[1].markdown(f"<div style='text-align: right; color: #ffcc00; font-weight: bold; font-size:15px; padding-top:5px;'>{val:.1f}%</div>", unsafe_allow_html=True)
-            r_cols[2].markdown(f"<div style='text-align: right; padding-top:8px;' class='{c1d_cls}'>{c1d:+.1f}</div>", unsafe_allow_html=True)
-            r_cols[3].markdown(f"<div style='text-align: right; padding-top:8px;' class='{c5d_cls}'>{c5d:+.1f}</div>", unsafe_allow_html=True)
+            r_cols[1].markdown(f"<div style='text-align: right; color: #fbbf24; font-weight: 700; font-size:16px; padding-top:4px;'>{val:.1f}%</div>", unsafe_allow_html=True)
+            r_cols[2].markdown(f"<div style='text-align: right; padding-top:7px;' class='{c1d_cls}'>{c1d:+.1f}</div>", unsafe_allow_html=True)
+            r_cols[3].markdown(f"<div style='text-align: right; padding-top:7px;' class='{c5d_cls}'>{c5d:+.1f}</div>", unsafe_allow_html=True)
             
             with r_cols[4]:
-                st.markdown("<div style='padding-top:8px;'></div>", unsafe_allow_html=True)
+                st.markdown("<div style='padding-top:7px;'></div>", unsafe_allow_html=True)
                 st.markdown(render_range_bar(low_30, high_30, val), unsafe_allow_html=True)
                 
-            r_cols[5].markdown(f"<div style='text-align: right; color: #ccc; padding-top:8px;'>{vol_str}</div>", unsafe_allow_html=True)
-            r_cols[6].markdown(f"<div style='text-align: right; color: #666; font-size: 11px; padding-top:8px;'>{time_str}</div>", unsafe_allow_html=True)
-            r_cols[7].markdown(f"<div style='text-align: right; padding-top:8px;'><span class='source-tag' style='color: {source_color}; border-color: {source_color}33;'>{source}</span></div>", unsafe_allow_html=True)
+            r_cols[5].markdown(f"<div style='text-align: right; color: #64748b; padding-top:7px; font-size: 12px;'>{vol_str}</div>", unsafe_allow_html=True)
+            r_cols[6].markdown(f"<div style='text-align: right; color: #475569; font-size: 11px; padding-top:7px;'>{time_str}</div>", unsafe_allow_html=True)
+            r_cols[7].markdown(f"<div style='text-align: right; padding-top:7px;'><span class='source-tag'>{source}</span></div>", unsafe_allow_html=True)
             
             # Expander for chart below the row
             with st.expander(f"📊 DATA / CHART - {m_name}", expanded=False):
                 if source != "Error":
                     render_plotly_chart(m_id, m_name, item.get('history_data'))
-                st.markdown(f"**Source URL:** [{m_url}]({m_url})")
+                st.markdown(f"<div style='margin-top:15px; font-size:11px; color:#64748b;'>**Source URL:** [{m_url}]({m_url})</div>", unsafe_allow_html=True)
             
-            st.markdown("<hr style='margin: 5px 0; border: 0; border-top: 1px solid #111;'>", unsafe_allow_html=True)
+            st.markdown("<hr>", unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()
