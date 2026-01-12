@@ -278,7 +278,6 @@ def parse_markets_file():
 def fetch_kalshi_data(url):
     session = st.session_state.kalshi_session
     try:
-        # Improved ticker extraction for URLs like /markets/event_ticker/slug/market_ticker
         parts = url.strip('/').split('/')
         if 'markets' not in parts: return []
         idx = parts.index('markets')
@@ -287,8 +286,6 @@ def fetch_kalshi_data(url):
         event_ticker = parts[idx+1]
         market_ticker = parts[-1] if len(parts) > idx + 3 else event_ticker
         
-        # Try both endpoints and both subdomains
-        # Patterns to try in order
         attempts = [
             (f"https://api.elections.kalshi.com/trade-api/v2/events/{event_ticker}", "event"),
             (f"https://api.kalshi.com/trade-api/v2/events/{event_ticker}", "event"),
@@ -308,33 +305,37 @@ def fetch_kalshi_data(url):
                 continue
         
         if not data:
-            return [{
-                "id": f"err_{url}",
-                "name": "Connection Error",
-                "contract": "Could not reach Kalshi API",
-                "value": 0,
-                "change_1d": 0,
-                "change_5d": 0,
-                "low_30d": 0,
-                "high_30d": 100,
-                "volume": 0,
-                "source": "Error",
-                "url": url
-            }]
+            return [{"id": f"err_{url}", "name": "Err", "contract": "API Fail", "value": 0, "source": "Error", "url": url}]
         
-        markets = data.get('markets', [data.get('market', data)]) if is_event else [data.get('market', data)]
+        markets_data = data.get('markets', [data.get('market', data)]) if is_event else [data.get('market', data)]
         event_title = data.get('event', {}).get('title', 'Kalshi Event') if is_event else data.get('market', {}).get('event_title', 'Kalshi Market')
 
         results = []
-        for m in markets:
+        for m in markets_data:
             if not m or not isinstance(m, dict): continue
-            # Basic validation that it's a market object
             if 'last_price' not in m and 'title' not in m: continue
             
             val = m.get('last_price', 0)
             m_ticker = m.get('ticker', market_ticker)
+            
+            # Fetch Historical Candles for Chart
+            history = {}
+            try:
+                hist_url = f"https://api.kalshi.com/trade-api/v2/markets/{m_ticker}/candles?limit=30&period_interval=1440"
+                h_resp = session.get(hist_url, timeout=5)
+                if h_resp.status_code == 200:
+                    candles = h_resp.json().get('candles', [])
+                    for c in candles:
+                        ts = datetime.fromtimestamp(c['time']).strftime("%Y-%m-%d")
+                        history[ts] = float(c['close'])
+            except:
+                pass
+            
             marker_id = f"kalshi_{m_ticker}"
             update_history(marker_id, val)
+            if not history: # Fallback to local history
+                history = load_history().get(marker_id, {datetime.now().strftime("%Y-%m-%d"): val})
+                
             c1d, c5d = get_changes(marker_id, val)
             
             results.append({
@@ -342,13 +343,15 @@ def fetch_kalshi_data(url):
                 "name": m.get('event_title', event_title),
                 "contract": m.get('title', ''),
                 "value": val,
+                "buy_price": m.get('yes_ask', m.get('last_price', 0)),
                 "change_1d": c1d,
                 "change_5d": c5d,
                 "low_30d": m.get('floor_price', 0),
                 "high_30d": m.get('cap_price', 100),
                 "volume": m.get('volume', 0),
                 "source": "Kalshi",
-                "url": url
+                "url": url,
+                "history_data": history
             })
         return results
     except Exception as e:
@@ -369,30 +372,43 @@ def fetch_polymarket_data(url):
         data = resp.json()
         if not data: return []
         
-        markets = data.get('markets', [data] if 'question' in data else [])
+        markets_data = data.get('markets', [data] if 'question' in data else [])
         event_title = data.get('title', data.get('question', 'Polymarket'))
         
         results = []
-        for m in markets:
+        for m in markets_data:
             if not isinstance(m, dict) or 'question' not in m: continue
             
-            # Handle outcomePrices which can be a list or a stringified JSON list
             prices_raw = m.get('outcomePrices', ['0', '0'])
             if isinstance(prices_raw, str):
-                try:
-                    prices = json.loads(prices_raw)
-                except:
-                    prices = ['0', '0']
+                try: prices = json.loads(prices_raw)
+                except: prices = ['0', '0']
             else:
                 prices = prices_raw
                 
-            try:
-                val = float(prices[0]) * 100 if prices and len(prices) > 0 else 0
-            except (ValueError, TypeError):
-                val = 0
+            try: val = float(prices[0]) * 100 if prices and len(prices) > 0 else 0
+            except: val = 0
             
-            marker_id = f"poly_{m.get('conditionId', m.get('id', slug))}"
+            m_id = m.get('conditionId', m.get('id', slug))
+            
+            # Fetch Historical Prices for Chart
+            history = {}
+            try:
+                hist_url = f"https://gamma-api.polymarket.com/pricehistory?market={m_id}"
+                h_resp = requests.get(hist_url, timeout=5)
+                if h_resp.status_code == 200:
+                    points = h_resp.json()
+                    for p in points:
+                        ts = datetime.fromtimestamp(p['t']).strftime("%Y-%m-%d")
+                        history[ts] = float(p['p']) * 100
+            except:
+                pass
+
+            marker_id = f"poly_{m_id}"
             update_history(marker_id, val)
+            if not history:
+                history = load_history().get(marker_id, {datetime.now().strftime("%Y-%m-%d"): val})
+                
             c1d, c5d = get_changes(marker_id, val)
             
             results.append({
@@ -400,13 +416,15 @@ def fetch_polymarket_data(url):
                 "name": event_title,
                 "contract": m.get('groupItemTitle', m.get('question', '')),
                 "value": val,
+                "buy_price": val, # Polymarket Price is the mid/last
                 "change_1d": c1d,
                 "change_5d": c5d,
                 "low_30d": 0,
                 "high_30d": 100,
                 "volume": float(m.get('volume', 0)),
                 "source": "PolyM",
-                "url": url
+                "url": url,
+                "history_data": history
             })
         return results
     except Exception as e:
@@ -430,8 +448,8 @@ def render_range_bar(low, high, current):
     </div>
     """
 
-def render_plotly_chart(marker_id, name):
-    history = load_history().get(marker_id, {})
+def render_plotly_chart(marker_id, name, history_data=None):
+    history = history_data if history_data else load_history().get(marker_id, {})
     if not history or len(history) < 2:
         st.info("📈 Chart will populate once more data points are collected.")
         return
@@ -514,9 +532,9 @@ def main():
         
         st.markdown(f"<div class='bb-header'>{cat_name}</div>", unsafe_allow_html=True)
         
-        # Column Headers
-        h_cols = st.columns([0.35, 0.1, 0.08, 0.08, 0.15, 0.1, 0.1, 0.04])
-        headers = ["CONCEPT / EVENT", "PRICE", "1D", "5D", "RANGE", "VOL", "UPDATE", "SRC"]
+        # Column Headers [Concept, BUY, LAST, 1D, 5D, Range, Vol, Update, Src]
+        h_cols = st.columns([0.3, 0.08, 0.08, 0.08, 0.08, 0.15, 0.08, 0.1, 0.05])
+        headers = ["CONCEPT / EVENT", "BUY", "LAST", "1D", "5D", "RANGE", "VOL", "UPDATE", "SRC"]
         for col, text in zip(h_cols, headers):
             col.markdown(f"<div style='color: #888; font-size: 11px; font-weight: bold; padding: 10px 0;'>{text}</div>", unsafe_allow_html=True)
         
@@ -529,6 +547,7 @@ def main():
             
             # Prepare data
             val = item['value']
+            buy = item.get('buy_price', val)
             c1d, c5d = item['change_1d'], item['change_5d']
             c1d_cls = "bb-value-pos" if c1d > 0 else "bb-value-neg" if c1d < 0 else "bb-value-neutral"
             c5d_cls = "bb-value-pos" if c5d > 0 else "bb-value-neg" if c5d < 0 else "bb-value-neutral"
@@ -538,28 +557,29 @@ def main():
             source_color = "#ff3344" if item['source'] == "Error" else "#55aaff"
 
             # Create a clean data row using st.columns
-            r_cols = st.columns([0.35, 0.1, 0.08, 0.08, 0.15, 0.1, 0.1, 0.04])
+            r_cols = st.columns([0.3, 0.08, 0.08, 0.08, 0.08, 0.15, 0.08, 0.1, 0.05])
             
             with r_cols[0]:
                 st.markdown(f"<div class='market-name' style='line-height:1.2; font-size:13px;'>{item['name']}</div>", unsafe_allow_html=True)
                 st.markdown(f"<div class='contract-name' style='font-size:10px;'>{item['contract']}</div>", unsafe_allow_html=True)
             
-            r_cols[1].markdown(f"<div style='text-align: right; color: #ffcc00; font-weight: bold; font-size:15px; padding-top:5px;'>{val:.1f}%</div>", unsafe_allow_html=True)
-            r_cols[2].markdown(f"<div style='text-align: right; padding-top:8px;' class='{c1d_cls}'>{c1d:+.1f}</div>", unsafe_allow_html=True)
-            r_cols[3].markdown(f"<div style='text-align: right; padding-top:8px;' class='{c5d_cls}'>{c5d:+.1f}</div>", unsafe_allow_html=True)
+            r_cols[1].markdown(f"<div style='text-align: right; color: #00ff66; font-weight: bold; font-size:15px; padding-top:5px;'>{buy:.1f}%</div>", unsafe_allow_html=True)
+            r_cols[2].markdown(f"<div style='text-align: right; color: #ffcc00; font-weight: bold; font-size:15px; padding-top:5px;'>{val:.1f}%</div>", unsafe_allow_html=True)
+            r_cols[3].markdown(f"<div style='text-align: right; padding-top:8px;' class='{c1d_cls}'>{c1d:+.1f}</div>", unsafe_allow_html=True)
+            r_cols[4].markdown(f"<div style='text-align: right; padding-top:8px;' class='{c5d_cls}'>{c5d:+.1f}</div>", unsafe_allow_html=True)
             
-            with r_cols[4]:
+            with r_cols[5]:
                 st.markdown("<div style='padding-top:8px;'></div>", unsafe_allow_html=True)
                 st.markdown(render_range_bar(item['low_30d'], item['high_30d'], val), unsafe_allow_html=True)
                 
-            r_cols[5].markdown(f"<div style='text-align: right; color: #ccc; padding-top:8px;'>{vol_str}</div>", unsafe_allow_html=True)
-            r_cols[6].markdown(f"<div style='text-align: right; color: #666; font-size: 11px; padding-top:8px;'>{time_str}</div>", unsafe_allow_html=True)
-            r_cols[7].markdown(f"<div style='text-align: right; padding-top:8px;'><span class='source-tag' style='color: {source_color}; border-color: {source_color}33;'>{item['source']}</span></div>", unsafe_allow_html=True)
+            r_cols[6].markdown(f"<div style='text-align: right; color: #ccc; padding-top:8px;'>{vol_str}</div>", unsafe_allow_html=True)
+            r_cols[7].markdown(f"<div style='text-align: right; color: #666; font-size: 11px; padding-top:8px;'>{time_str}</div>", unsafe_allow_html=True)
+            r_cols[8].markdown(f"<div style='text-align: right; padding-top:8px;'><span class='source-tag' style='color: {source_color}; border-color: {source_color}33;'>{item['source']}</span></div>", unsafe_allow_html=True)
             
             # Expander for chart below the row
             with st.expander(f"📊 DATA / CHART - {item['name']}", expanded=False):
                 if item['source'] != "Error":
-                    render_plotly_chart(item['id'], item['name'])
+                    render_plotly_chart(item['id'], item['name'], item.get('history_data'))
                 st.markdown(f"**Source URL:** [{item['url']}]({item['url']})")
             
             st.markdown("<hr style='margin: 5px 0; border: 0; border-top: 1px solid #111;'>", unsafe_allow_html=True)
