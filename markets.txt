@@ -13,11 +13,13 @@ https://polymarket.com/event/who-will-trump-nominate-as-fed-chair
 https://kalshi.com/markets/kxleavepowellgov/jerome-powell-leave-as-fed-governor/kxleavepowellgov-26aug01
 https://kalshi.com/markets/kxleavepowell/powell-leaving/leavepowell-25
 
+[Business/Finance]
 [AI]
 https://polymarket.com/event/which-company-has-best-ai-model-end-of-june?tid=1767889847956
 https://kalshi.com/markets/kxoaiagi/openai-achieves-agi/oaiagi
 
-[News/Politics]
+[News]
+[US Politics]
 https://kalshi.com/markets/kxtariffchecks/will-americans-receive-tariff-dividends-in-2025/kxtariffchecks-26
 https://polymarket.com/event/will-the-supreme-court-rule-in-favor-of-trumps-tariffs?tid=1767030935914
 https://kalshi.com/markets/controlh/house-winner/controlh-2026

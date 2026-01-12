@@ -11,6 +11,7 @@ from dotenv import load_dotenv
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.hazmat.primitives import serialization
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # Load environment variables
 load_dotenv()
@@ -293,8 +294,13 @@ def get_changes(marker_id, current_price, history_dict=None):
 
 def parse_markets_file():
     items = []
-    current_category = "GLOBAL MARKETS"
-    current_subcategory = None
+    current_tab = "General"
+    current_category = "General"
+    
+    # Define known "Top Level" tabs to distinguish from subcategories
+    # Or simply: Any header that is followed by another header is a Tab?
+    # Better: explicit list based on user input
+    known_tabs = ["Finance/Economics", "Business", "News", "Military/Geopolitics", "Sports/Entertainment/Culture/Misc."]
     
     if not os.path.exists("markets.txt"):
         return []
@@ -308,108 +314,108 @@ def parse_markets_file():
         
         if line.startswith("[") and line.endswith("]"):
             name = line[1:-1]
-            is_followed_by_bracket = False
-            for j in range(i + 1, len(lines)):
-                next_line = lines[j].strip()
-                if not next_line: continue
-                if next_line.startswith("["):
-                    is_followed_by_bracket = True
-                break
-            
-            if is_followed_by_bracket:
-                current_category = name
-                current_subcategory = None
+            if name in known_tabs:
+                current_tab = name
+                current_category = "General" # Reset category when new tab starts
             else:
-                current_subcategory = name
+                current_category = name
             continue
-        
-        platform = "Kalshi" if "kalshi.com" in line else "Polymarket" if "polymarket.com" in line else "Unknown"
+            
+        url = line
+        platform = "Kalshi" if "kalshi.com" in url else "Polymarket"
         items.append({
-            "category": current_category,
-            "subcategory": current_subcategory,
-            "url": line,
-            "platform": platform
+            "platform": platform, 
+            "url": url, 
+            "tab": current_tab,
+            "category": current_category
         })
     return items
 
+@st.cache_data(ttl=600)
 def fetch_kalshi_data(url):
-    session = st.session_state.kalshi_session
     try:
-        parts = url.strip('/').split('/')
-        if 'markets' not in parts: return []
-        idx = parts.index('markets')
-        if len(parts) <= idx + 1: return []
+        # Create a temporary session for cached fetch
+        session = requests.Session()
+        # Non-signer session for public data fetching to avoid complicated state in cache
+        # If needed, we could implement a more complex signer cache, but public endpoints usually suffice.
+    try:
+        session = get_kalshi_session()
+        headers = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"}
         
-        event_ticker = parts[idx+1].upper()
-        market_ticker = parts[-1].upper()
+        # Clean URL of query params and trailing slashes
+        clean_url = url.split('?')[0].rstrip('/')
+        parts = [p.upper() for p in clean_url.split('/') if p]
         
-        # Try both domains and both /events/ and /markets/ endpoints
+        if 'MARKETS' not in parts: return []
+        idx = parts.index('MARKETS')
+        # Ticker candidates: everything after 'markets'
+        candidates = parts[idx+1:]
+        if not candidates: return []
+        
         data = None
         is_event = True
-        target_domain = "api.elections.kalshi.com"
+        target_domain = None
+        event_ticker = None # Initialize event_ticker for later use
         
-        for domain in ["api.elections.kalshi.com", "api.kalshi.com"]:
-            # Try Event first
-            try:
-                resp = session.get(f"https://{domain}/trade-api/v2/events/{event_ticker}", timeout=5)
-                if resp.status_code == 200:
-                    data = resp.json()
-                    is_event = True
-                    target_domain = domain
-                    break
-            except: pass
-            
-            # Try Market direct
-            try:
-                resp = session.get(f"https://{domain}/trade-api/v2/markets/{market_ticker}", timeout=5)
-                if resp.status_code == 200:
-                    data = resp.json()
-                    is_event = False
-                    target_domain = domain
-                    break
-            except: pass
+        # Try every candidate slug as either an event or a market ticker
+        # Priority: last slug as event, then last slug as market, then first slug as event
+        search_order = []
+        # Add last candidate first for higher priority
+        if candidates:
+            last_candidate = candidates[-1]
+            search_order.append((last_candidate, True))  # Try as Event
+            search_order.append((last_candidate, False)) # Try as Market
+        
+        # Add all other candidates
+        for c in candidates:
+            if (c, True) not in search_order: search_order.append((c, True))
+            if (c, False) not in search_order: search_order.append((c, False))
+
+        for domain in ["api.kalshi.com", "api.elections.kalshi.com"]:
+            for ticker, try_event in search_order:
+                endpoint = "events" if try_event else "markets"
+                try:
+                    resp = session.get(f"https://{domain}/trade-api/v2/{endpoint}/{ticker}", headers=headers, timeout=5)
+                    if resp.status_code == 200:
+                        data = resp.json()
+                        is_event = try_event
+                        target_domain = domain
+                        event_ticker = ticker # For reporting
+                        break
+                except: pass
+            if data: break
             
         if not data:
-            return [{"id": f"err_{url}", "event_id": f"err_ev_{url}", "name": "Err", "contract": "Event Not Found", "value": 0, "change_1d": 0, "change_7d": 0, "change_30d": 0, "volume": 0, "source": "Error", "url": url}]
-            
-        series_ticker = data.get('event', {}).get('series_ticker') if is_event else data.get('market', {}).get('series_ticker')
-        if not series_ticker: series_ticker = event_ticker # Fallback
+            return [{"id": f"err_{url}", "event_id": f"err_ev_{url}", "name": "Err", "contract": f"Event/Market Not Found ({candidates[-1]})", "value": 0, "change_1d": 0, "change_7d": 0, "change_30d": 0, "volume": 0, "source": "Error", "url": url}]
         
-        markets_data = data.get('markets', []) if is_event else [data.get('market', data)]
+        m_list = data.get('markets', []) if is_event else [data.get('market', data)]
         
-        # Better title extraction
-        if is_event:
-            event_title = data.get('event', {}).get('title') or data.get('event', {}).get('event_title') or 'Kalshi Event'
-        else:
-            m_obj = data.get('market', data)
-            event_title = m_obj.get('event_title') or m_obj.get('title') or m_obj.get('subtitle') or 'Kalshi Market'
+        # Robust title extraction
+        e_obj = data.get('event', {}) if is_event else data.get('market', data)
+        event_title = e_obj.get('title') or e_obj.get('event_title') or e_obj.get('subtitle') or e_obj.get('event_subtitle') or 'Kalshi Event'
+        
+        # Extra check: if it's a single market and title is generic
+        if not is_event and event_title == 'Kalshi Event':
+            event_title = e_obj.get('ticker') or 'Kalshi Market'
 
         results = []
-        for m in markets_data:
+        for m in m_list:
             if not m or not isinstance(m, dict): continue
             
             val = m.get('last_price', 0)
             m_ticker = m.get('ticker')
+            if not m_ticker: continue
+            
+            # Use series_ticker if available, else fallback
+            series_ticker = m.get('series_ticker') or data.get('event', {}).get('series_ticker') or m.get('event_ticker') or event_ticker
             
             history = {}
-            # Step 1: Fetch 1-Year Daily History
+            # Fetch History (pruned for performance)
             try:
                 now = int(time.time())
                 start_1y = now - (365 * 24 * 3600)
-                hist_url_daily = f"https://{target_domain}/trade-api/v2/series/{series_ticker}/markets/{m_ticker}/candlesticks?period_interval=1440&start_ts={start_1y}&end_ts={now}"
-                h_resp = session.get(hist_url_daily, timeout=5)
-                if h_resp.status_code == 200:
-                    for c in h_resp.json().get('candlesticks', []):
-                        ts = datetime.fromtimestamp(c['end_period_ts']).isoformat()
-                        p = c.get('price', {}).get('close') or c.get('yes_ask', {}).get('close') or c.get('yes_bid', {}).get('close')
-                        if p is not None: history[ts] = float(p)
-            except: pass
-            
-            # Step 2: Fetch 14-Day Hourly History for better resolution
-            try:
-                start_14d = now - (14 * 24 * 3600)
-                hist_url_hourly = f"https://{target_domain}/trade-api/v2/series/{series_ticker}/markets/{m_ticker}/candlesticks?period_interval=60&start_ts={start_14d}&end_ts={now}"
-                h_resp = session.get(hist_url_hourly, timeout=5)
+                hist_url = f"https://{target_domain}/trade-api/v2/series/{series_ticker}/markets/{m_ticker}/candlesticks?period_interval=1440&start_ts={start_1y}&end_ts={now}"
+                h_resp = session.get(hist_url, headers=headers, timeout=5)
                 if h_resp.status_code == 200:
                     for c in h_resp.json().get('candlesticks', []):
                         ts = datetime.fromtimestamp(c['end_period_ts']).isoformat()
@@ -419,12 +425,10 @@ def fetch_kalshi_data(url):
             
             marker_id = f"kalshi_{m_ticker}"
             update_history(marker_id, val)
-            if not history:
-                history = {datetime.now().isoformat(): val}
+            if not history: history = {datetime.now().isoformat(): val}
                 
             c1d, c7d, c30d = get_changes(marker_id, val, history)
             
-            # Volume filter
             volume = m.get('volume', 0)
             if volume < 2000: continue
 
@@ -432,13 +436,11 @@ def fetch_kalshi_data(url):
                 "id": marker_id,
                 "event_id": f"kalshi_ev_{event_ticker}",
                 "name": event_title,
-                "contract": m.get('title', ''),
+                "contract": m.get('title', m.get('subtitle', '')),
                 "value": val,
                 "change_1d": c1d,
                 "change_7d": c7d,
                 "change_30d": c30d,
-                "low_30d": m.get('floor_price', 0),
-                "high_30d": m.get('cap_price', 100),
                 "volume": volume,
                 "source": "Kalshi",
                 "url": url,
@@ -446,11 +448,14 @@ def fetch_kalshi_data(url):
             })
         return results
     except Exception as e:
-        return [{"id": f"err_{url}", "event_id": f"err_ev_{url}", "name": "Error", "contract": str(e), "value": 0, "change_1d": 0, "change_7d": 0, "change_30d": 0, "volume": 0, "source": "Error", "url": url, "history_data": {}}]
+        return [{"id": f"err_{url}", "event_id": f"err_ev_{url}", "name": "Error", "contract": f"Kalshi Logic Error for {url}: {str(e)}", "value": 0, "change_1d": 0, "change_7d": 0, "change_30d": 0, "volume": 0, "source": "Error", "url": url, "history_data": {}}]
 
+@st.cache_data(ttl=600)
 def fetch_polymarket_data(url):
     try:
-        slug_match = re.search(r'event/([^/]+)', url) or re.search(r'market/([^/]+)', url)
+        headers = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"}
+        # Improved regex to exclude query params
+        slug_match = re.search(r'event/([^/?#]+)', url) or re.search(r'market/([^/?#]+)', url)
         if not slug_match: return []
         slug = slug_match.group(1)
         
@@ -597,36 +602,48 @@ def main():
         st.info("Add URLs to markets.txt")
         return
 
-    # Data Fetching
+    # Data Fetching (Parallel)
     all_items = []
     with st.spinner("UPDATING..."):
-        for config in market_configs:
-            if config['platform'] == "Kalshi":
-                markets = fetch_kalshi_data(config['url'])
-            else:
-                markets = fetch_polymarket_data(config['url'])
-                
-            for m in markets:
-                m['category'] = config['category']
-                m['subcategory'] = config['subcategory']
-                all_items.append(m)
+        with ThreadPoolExecutor(max_workers=10) as executor:
+            future_to_config = {
+                executor.submit(
+                    fetch_kalshi_data if config['platform'] == "Kalshi" else fetch_polymarket_data, 
+                    config['url']
+                ): config for config in market_configs
+            }
+            
+            for future in as_completed(future_to_config):
+                config = future_to_config[future]
+                try:
+                    markets = future.result()
+                    for m in markets:
+                        m['tab'] = config['tab']
+                        m['category'] = config['category']
+                        all_items.append(m)
+                except Exception as e:
+                    st.error(f"Error fetching {config['url']}: {e}")
 
     if not all_items:
         st.warning("No data found matching criteria.")
         return
 
-    # Grouping by Category -> Subcategory -> Event
+    # Grouping by Tab -> Category -> Event
+    # structured_data = {tab: {category: {event_id: [items]}}}
     structured_data = {}
+    
+    # Sort items based on order in markets.txt (preserved by list append order usually)
+    
     for item in all_items:
+        tab = item.get('tab', 'General')
         cat = item['category']
-        sub = item['subcategory'] or "GENERAL"
         ev_id = item['event_id']
         
-        if cat not in structured_data: structured_data[cat] = {}
-        if sub not in structured_data[cat]: structured_data[cat][sub] = {}
-        if ev_id not in structured_data[cat][sub]: structured_data[cat][sub][ev_id] = []
+        if tab not in structured_data: structured_data[tab] = {}
+        if cat not in structured_data[tab]: structured_data[tab][cat] = {}
+        if ev_id not in structured_data[tab][cat]: structured_data[tab][cat][ev_id] = []
         
-        structured_data[cat][sub][ev_id].append(item)
+        structured_data[tab][cat][ev_id].append(item)
 
     def format_row(m, indent=False, is_header=False):
         # Layout: Name (100), Value (8), d/d (8), w/w (8), m/m (8), Vol (10), Src (10), Upd (8)
@@ -667,26 +684,37 @@ def main():
     # Draw Global Header
     st.markdown(f"<div style='font-family: monospace; font-size: 11px; color: #888; padding: 4px 0; border-bottom: 2px solid #333; white-space: pre;'>{format_row(None, is_header=True)}</div>", unsafe_allow_html=True)
 
-    # Render Content
-    for cat_name, subcats in structured_data.items():
-        st.markdown(f"<div class='bb-cat-header'>{cat_name}</div>", unsafe_allow_html=True)
-        
-        for sub_name, events in subcats.items():
-            st.markdown(f"<div class='bb-subcat-header'>{sub_name}</div>", unsafe_allow_html=True)
+    # Create Tabs for each top-level key in structured_data
+    # We want a specific order if possible, or just sorted keys
+    tab_names = list(structured_data.keys())
+    # Sort tab names to ensure consistent order (General first or custom order?)
+    # Let's trust the insertion order (which follows markets.txt order roughly)
+    
+    if not tab_names: return
+
+    tabs = st.tabs(tab_names)
+    
+    for i, tab_name in enumerate(tab_names):
+        with tabs[i]:
+            # Each tab contains categories -> events
+            categories = structured_data[tab_name]
             
-            for ev_id, markets in events.items():
-                # If multiple markets, the "Event" is a header
-                if len(markets) > 1:
-                    first = markets[0]
-                    # Use an expander as the header to allow collapsing the whole group
-                    with st.expander(first['name'], expanded=False):
-                        for m in markets:
-                            with st.expander(format_row(m, indent=True)):
-                                render_plotly_chart(m['id'], m['name'], m.get('history_data'))
-                else:
-                    m = markets[0]
-                    with st.expander(format_row(m)):
-                        render_plotly_chart(m['id'], m['name'], m.get('history_data'))
+            for cat_name, events in categories.items():
+                # If the Category name is "General", maybe skip header, otherwise show it
+                if cat_name != "General":
+                    st.markdown(f"<div class='bb-header'>{cat_name}</div>", unsafe_allow_html=True)
+                
+                for ev_id, markets in events.items():
+                    if len(markets) > 1:
+                        first = markets[0]
+                        with st.expander(first['name'], expanded=False):
+                            for m in markets:
+                                with st.expander(format_row(m, indent=True)):
+                                    render_plotly_chart(m['id'], m['name'], m.get('history_data'))
+                    else:
+                        m = markets[0]
+                        with st.expander(format_row(m)):
+                            render_plotly_chart(m['id'], m['name'], m.get('history_data'))
 
 if __name__ == "__main__":
     main()
