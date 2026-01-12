@@ -412,28 +412,54 @@ def fetch_polymarket_data(url):
     except Exception as e:
         return []
 
-# --- COMPONENTS ---
+# --- CHARTING ---
 
-def render_range_bar(low, high, current):
-    safe_current = max(low, min(high, current))
-    total_range = high - low if high > low else 100
-    pos = ((safe_current - low) / total_range) * 100
+def render_plotly_chart(marker_id, name):
+    history = load_history().get(marker_id, {})
+    if not history or len(history) < 2:
+        st.info("📈 Chart will populate once more data points are collected.")
+        return
     
-    return f"""
-    <div style="display: flex; align-items: center; justify-content: space-between; font-size: 10px; color: #555; min-width: 120px;">
-        <span style="color: #ff3344;">{low:.0f}</span>
-        <div style="flex-grow: 1; height: 3px; background: #222; margin: 0 6px; position: relative; border-radius: 2px;">
-            <div style="position: absolute; left: 0; width: 100%; height: 100%; border-left: 1px solid #444; border-right: 1px solid #444;"></div>
-            <div style="position: absolute; left: {pos}%; top: -4px; width: 4px; height: 11px; background: #55aaff; border-radius: 1px; box-shadow: 0 0 5px #55aaff88;"></div>
-        </div>
-        <span style="color: #00ff66;">{high:.0f}</span>
-    </div>
-    """
+    # Sort dates and prepare data
+    dates = sorted(history.keys())
+    prices = [history[d] for d in dates]
+    
+    df = pd.DataFrame({"Date": dates, "Price": prices})
+    df['Date'] = pd.to_datetime(df['Date'])
+    
+    import plotly.graph_objects as go
+    
+    fig = go.Figure()
+    
+    # Add Area Chart
+    fig.add_trace(go.Scatter(
+        x=df['Date'], y=df['Price'],
+        fill='tozeroy',
+        line=dict(color='#55aaff', width=3),
+        fillcolor='rgba(85, 170, 255, 0.1)',
+        hovertemplate='Price: %{y:.1f}%<br>Date: %{x}<extra></extra>'
+    ))
+    
+    fig.update_layout(
+        template="plotly_dark",
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(0,0,0,0)',
+        margin=dict(l=0, r=0, t=30, b=0),
+        height=250,
+        xaxis=dict(showgrid=False, title=""),
+        yaxis=dict(showgrid=True, gridcolor='#222', title="Prob (%)", range=[0, 100]),
+        title=dict(text=f"{name} - Price History", font=dict(color='#ffcc00', size=14))
+    )
+    
+    st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
+
+# --- MAIN APP ---
 
 def main():
     st.set_page_config(page_title="Bloomberg | PREDICT", layout="wide", initial_sidebar_state="collapsed")
     apply_bloomberg_style()
     
+    # Top Bar
     t1, t2, t3 = st.columns([2, 2, 1])
     with t1:
         st.markdown("<div style='font-size: 24px; font-weight: bold; color: #ffcc00; margin-top: 5px;'>PREDICT <span style='color: #888; font-weight: normal; font-size: 14px; margin-left: 10px;'>Prediction Markets</span></div>", unsafe_allow_html=True)
@@ -465,67 +491,59 @@ def main():
                 m['subcategory'] = config['subcategory']
                 grouped_data[cat].append(m)
 
-    import textwrap
+    # Render Categories
     for cat_name, items in grouped_data.items():
         if not items: 
-            # Still show the header if there was a category intended
             continue
         
         st.markdown(f"<div class='bb-header'>{cat_name}</div>", unsafe_allow_html=True)
         
-        current_sub = None
+        # Column Headers
+        h_cols = st.columns([0.35, 0.1, 0.08, 0.08, 0.15, 0.1, 0.1, 0.04])
+        headers = ["CONCEPT / EVENT", "PRICE", "1D", "5D", "RANGE", "VOL", "UPDATE", "SRC"]
+        for col, text in zip(h_cols, headers):
+            col.markdown(f"<div style='color: #888; font-size: 11px; font-weight: bold; padding: 10px 0;'>{text}</div>", unsafe_allow_html=True)
         
-        html = """<table class="bb-table">
-<thead>
-<tr>
-<th style="width: 35%;">CONCEPT / EVENT</th>
-<th style="text-align: right; width: 10%;">PRICE (%)</th>
-<th style="text-align: right; width: 8%;">1D NET</th>
-<th style="text-align: right; width: 8%;">5D NET</th>
-<th style="text-align: center; width: 15%;">RANGE (30D)</th>
-<th style="text-align: right; width: 10%;">VOLUME</th>
-<th style="text-align: right; width: 10%;">UPDATE</th>
-<th style="text-align: right; width: 4%;">SRC</th>
-</tr>
-</thead>
-<tbody>"""
-            
+        current_sub = None
         for item in items:
             if item['subcategory'] != current_sub:
                 current_sub = item['subcategory']
                 if current_sub:
-                    html += f"<tr><td colspan='8' class='bb-subheader'>{current_sub}</td></tr>"
+                    st.markdown(f"<div class='bb-subheader'>{current_sub}</div>", unsafe_allow_html=True)
             
             val = item['value']
             c1d, c5d = item['change_1d'], item['change_5d']
             c1d_cls = "bb-value-pos" if c1d > 0 else "bb-value-neg" if c1d < 0 else "bb-value-neutral"
             c5d_cls = "bb-value-pos" if c5d > 0 else "bb-value-neg" if c5d < 0 else "bb-value-neutral"
-            
             vol = item['volume']
             vol_str = f"{vol/1e6:.1f}M" if vol >= 1e6 else f"{vol/1e3:.0f}k" if vol >= 1e3 else str(int(vol))
-            
             time_str = datetime.now().strftime("%H:%M")
-            
-            # Special color for error source
             source_color = "#ff3344" if item['source'] == "Error" else "#55aaff"
+
+            # Create the custom HTML label for the expander
+            expander_label = f"""
+                <div style="display: flex; width: 100%; align-items: center;">
+                    <div style="flex: 0.35; padding-right: 10px;">
+                        <div class="market-name" style="margin:0;">{item['name']}</div>
+                        <div class="contract-name">{item['contract']}</div>
+                    </div>
+                    <div style="flex: 0.1; text-align: right; color: #ffcc00; font-weight: bold;">{val:.1f}%</div>
+                    <div style="flex: 0.08; text-align: right;" class="{c1d_cls}">{c1d:+.1f}</div>
+                    <div style="flex: 0.08; text-align: right;" class="{c5d_cls}">{c5d:+.1f}</div>
+                    <div style="flex: 0.15; padding: 0 10px;">{render_range_bar(item['low_30d'], item['high_30d'], val)}</div>
+                    <div style="flex: 0.1; text-align: right; color: #ccc;">{vol_str}</div>
+                    <div style="flex: 0.1; text-align: right; color: #666; font-size: 11px;">{time_str}</div>
+                    <div style="flex: 0.04; text-align: right;"><span class="source-tag" style="color: {source_color}; border-color: {source_color}33;">{item['source']}</span></div>
+                </div>
+            """
             
-            html += f"""
-<tr>
-<td>
-<div class="market-name">{item['name']}</div>
-<div class="contract-name">{item['contract']}</div>
-</td>
-<td style="text-align: right;"><span class="price-val">{val:.1f}%</span></td>
-<td style="text-align: right;" class="{c1d_cls}">{c1d:+.1f}</td>
-<td style="text-align: right;" class="{c5d_cls}">{c5d:+.1f}</td>
-<td>{render_range_bar(item['low_30d'], item['high_30d'], val)}</td>
-<td style="text-align: right;">{vol_str}</td>
-<td style="text-align: right; color: #666; font-size: 11px;">{time_str}</td>
-<td style="text-align: right;"><span class="source-tag" style="color: {source_color}; border-color: {source_color}33;">{item['source']}</span></td>
-</tr>"""
-            
-        html += "</tbody></table>"
-        st.markdown(html, unsafe_allow_html=True)
+            with st.expander(expander_label, expanded=False):
+                if item['source'] != "Error":
+                    render_plotly_chart(item['id'], item['name'])
+                st.markdown(f"**Source URL:** [{item['url']}]({item['url']})")
+
+if __name__ == "__main__":
+    main()
 
 if __name__ == "__main__":
     main()
