@@ -92,7 +92,7 @@ if 'kalshi_session' not in st.session_state:
     st.session_state.kalshi_session = get_kalshi_session()
 
 # --- STYLING ---
-def apply_bloomberg_style():
+def apply_custom_style():
     st.markdown("""
         <style>
         @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;500;700&display=swap');
@@ -108,7 +108,7 @@ def apply_bloomberg_style():
             background-color: #000000 !important;
         }
 
-        /* Bloomberg Table Headers */
+        /* Dashboard Headers */
         .bb-header {
             background-color: #333333 !important;
             color: #ffcc00 !important;
@@ -283,25 +283,43 @@ def fetch_kalshi_data(url):
         idx = parts.index('markets')
         if len(parts) <= idx + 1: return []
         
-        event_ticker = parts[idx+1]
-        market_ticker = parts[-1] if len(parts) > idx + 3 else event_ticker
+        event_ticker = parts[idx+1].upper()
+        market_ticker = parts[-1].upper()
         
-        # We need series_ticker for the candlestick endpoint
-        # Best way is to hit the event endpoint first
-        event_api = f"https://api.elections.kalshi.com/trade-api/v2/events/{event_ticker}"
-        resp = session.get(event_api, timeout=5)
-        if resp.status_code != 200:
-            # Fallback to direct market endpoint if event ticker doesn't work
-            event_api = f"https://api.kalshi.com/trade-api/v2/events/{event_ticker}"
-            resp = session.get(event_api, timeout=5)
+        # Try both domains and both /events/ and /markets/ endpoints
+        data = None
+        is_event = True
+        target_domain = "api.elections.kalshi.com"
+        
+        for domain in ["api.elections.kalshi.com", "api.kalshi.com"]:
+            # Try Event first
+            try:
+                resp = session.get(f"https://{domain}/trade-api/v2/events/{event_ticker}", timeout=5)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    is_event = True
+                    target_domain = domain
+                    break
+            except: pass
             
-        if resp.status_code != 200:
+            # Try Market direct
+            try:
+                resp = session.get(f"https://{domain}/trade-api/v2/markets/{market_ticker}", timeout=5)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    is_event = False
+                    target_domain = domain
+                    break
+            except: pass
+            
+        if not data:
             return [{"id": f"err_{url}", "name": "Err", "contract": "Event Not Found", "value": 0, "source": "Error", "url": url}]
             
-        data = resp.json()
-        series_ticker = data.get('event', {}).get('series_ticker', event_ticker)
-        markets_data = data.get('markets', [])
-        event_title = data.get('event', {}).get('title', 'Kalshi Event')
+        series_ticker = data.get('event', {}).get('series_ticker') if is_event else data.get('market', {}).get('series_ticker')
+        if not series_ticker: series_ticker = event_ticker # Fallback
+        
+        markets_data = data.get('markets', []) if is_event else [data.get('market', data)]
+        event_title = data.get('event', {}).get('title', 'Kalshi Event') if is_event else data.get('market', {}).get('event_title', 'Kalshi Market')
 
         results = []
         for m in markets_data:
@@ -310,31 +328,36 @@ def fetch_kalshi_data(url):
             val = m.get('last_price', 0)
             m_ticker = m.get('ticker')
             
-            # Fetch Historical Candles
             history = {}
+            # Step 1: Fetch 1-Year Daily History
             try:
                 now = int(time.time())
-                start = now - (30 * 24 * 3600)
-                # Correct path: /series/{series_ticker}/markets/{ticker}/candlesticks
-                hist_url = f"https://api.elections.kalshi.com/trade-api/v2/series/{series_ticker}/markets/{m_ticker}/candlesticks?period_interval=1440&start_ts={start}&end_ts={now}"
-                h_resp = session.get(hist_url, timeout=5)
+                start_1y = now - (365 * 24 * 3600)
+                hist_url_daily = f"https://{target_domain}/trade-api/v2/series/{series_ticker}/markets/{m_ticker}/candlesticks?period_interval=1440&start_ts={start_1y}&end_ts={now}"
+                h_resp = session.get(hist_url_daily, timeout=5)
                 if h_resp.status_code == 200:
-                    candles = h_resp.json().get('candlesticks', [])
-                    for c in candles:
-                        ts = datetime.fromtimestamp(c['end_period_ts']).strftime("%Y-%m-%d")
-                        # Try to get close price from multiple possible fields
-                        p = c.get('price', {}).get('close')
-                        if p is None: p = c.get('yes_ask', {}).get('close')
-                        if p is None: p = c.get('yes_bid', {}).get('close')
-                        if p is not None:
-                            history[ts] = float(p)
-            except:
-                pass
+                    for c in h_resp.json().get('candlesticks', []):
+                        ts = datetime.fromtimestamp(c['end_period_ts']).isoformat()
+                        p = c.get('price', {}).get('close') or c.get('yes_ask', {}).get('close') or c.get('yes_bid', {}).get('close')
+                        if p is not None: history[ts] = float(p)
+            except: pass
+            
+            # Step 2: Fetch 14-Day Hourly History for better resolution
+            try:
+                start_14d = now - (14 * 24 * 3600)
+                hist_url_hourly = f"https://{target_domain}/trade-api/v2/series/{series_ticker}/markets/{m_ticker}/candlesticks?period_interval=60&start_ts={start_14d}&end_ts={now}"
+                h_resp = session.get(hist_url_hourly, timeout=5)
+                if h_resp.status_code == 200:
+                    for c in h_resp.json().get('candlesticks', []):
+                        ts = datetime.fromtimestamp(c['end_period_ts']).isoformat()
+                        p = c.get('price', {}).get('close') or c.get('yes_ask', {}).get('close') or c.get('yes_bid', {}).get('close')
+                        if p is not None: history[ts] = float(p)
+            except: pass
             
             marker_id = f"kalshi_{m_ticker}"
             update_history(marker_id, val)
             if not history:
-                history = load_history().get(marker_id, {datetime.now().strftime("%Y-%m-%d"): val})
+                history = {datetime.now().isoformat(): val}
                 
             c1d, c5d = get_changes(marker_id, val)
             
@@ -354,20 +377,7 @@ def fetch_kalshi_data(url):
             })
         return results
     except Exception as e:
-        return [{
-            "id": f"err_{url}",
-            "name": "Kalshi Fetch Error",
-            "contract": str(e)[:100],
-            "value": 0,
-            "change_1d": 0,
-            "change_5d": 0,
-            "low_30d": 0,
-            "high_30d": 100,
-            "volume": 0,
-            "source": "Error",
-            "url": url,
-            "history_data": {}
-        }]
+        return [{"id": f"err_{url}", "name": "Error", "contract": str(e), "value": 0, "source": "Error", "url": url, "history_data": {}}]
 
 def fetch_polymarket_data(url):
     try:
@@ -401,33 +411,25 @@ def fetch_polymarket_data(url):
             try: val = float(prices[0]) * 100 if prices and len(prices) > 0 else 0
             except: val = 0
             
-            # Fetch Historical Prices via CLOB API
             history = {}
             try:
-                clob_ids_raw = m.get('clobTokenIds', [])
-                if isinstance(clob_ids_raw, str):
-                    try: clob_ids = json.loads(clob_ids_raw)
-                    except: clob_ids = []
-                else:
-                    clob_ids = clob_ids_raw
-                
+                clob_ids = json.loads(m.get('clobTokenIds', '[]')) if isinstance(m.get('clobTokenIds'), str) else m.get('clobTokenIds', [])
                 if clob_ids:
-                    clob_id = clob_ids[0] # Usually the first is 'Yes'
-                    hist_url = f"https://clob.polymarket.com/prices-history?market={clob_id}&interval=1d&fidelity=1440"
+                    clob_id = clob_ids[0]
+                    # Fetch max history with 1-hour resolution
+                    hist_url = f"https://clob.polymarket.com/prices-history?market={clob_id}&interval=max&fidelity=60"
                     h_resp = requests.get(hist_url, timeout=5)
                     if h_resp.status_code == 200:
-                        points = h_resp.json().get('history', [])
-                        for p in points:
-                            ts = datetime.fromtimestamp(p['t']).strftime("%Y-%m-%d")
+                        for p in h_resp.json().get('history', []):
+                            ts = datetime.fromtimestamp(p['t']).isoformat()
                             history[ts] = float(p['p']) * 100
-            except:
-                pass
+            except: pass
 
             m_id = m.get('conditionId', m.get('id', slug))
             marker_id = f"poly_{m_id}"
             update_history(marker_id, val)
             if not history:
-                history = load_history().get(marker_id, {datetime.now().strftime("%Y-%m-%d"): val})
+                history = {datetime.now().isoformat(): val}
                 
             c1d, c5d = get_changes(marker_id, val)
             
@@ -447,20 +449,7 @@ def fetch_polymarket_data(url):
             })
         return results
     except Exception as e:
-        return [{
-            "id": f"err_{url}",
-            "name": "Poly Fetch Error",
-            "contract": str(e)[:100],
-            "value": 0,
-            "change_1d": 0,
-            "change_5d": 0,
-            "low_30d": 0,
-            "high_30d": 100,
-            "volume": 0,
-            "source": "Error",
-            "url": url,
-            "history_data": {}
-        }]
+        return [{"id": f"err_{url}", "name": "Error", "contract": str(e), "value": 0, "source": "Error", "url": url, "history_data": {}}]
 
 # --- COMPONENTS ---
 
@@ -481,54 +470,69 @@ def render_range_bar(low, high, current):
     """
 
 def render_plotly_chart(marker_id, name, history_data=None):
-    history = history_data if history_data else load_history().get(marker_id, {})
+    history = history_data if history_data else {}
     if not history or len(history) < 2:
         st.info("📈 Chart will populate once more data points are collected.")
         return
     
-    # Sort dates and prepare data
-    dates = sorted(history.keys())
-    prices = [history[d] for d in dates]
+    # Sort dates and prepare dataframe
+    df = pd.DataFrame([{"Date": pd.to_datetime(t), "Price": p} for t, p in history.items()])
+    df = df.sort_values("Date")
     
-    df = pd.DataFrame({"Date": dates, "Price": prices})
-    df['Date'] = pd.to_datetime(df['Date'])
+    # Define Plotly Rendering Function
+    def render_fig(data, title_suffix):
+        import plotly.graph_objects as go
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(
+            x=data['Date'], y=data['Price'],
+            fill='tozeroy',
+            line=dict(color='#55aaff', width=2),
+            fillcolor='rgba(85, 170, 255, 0.1)',
+            hovertemplate='Price: %{y:.1f}%<br>Date: %{x}<extra></extra>'
+        ))
+        fig.update_layout(
+            template="plotly_dark",
+            paper_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor='rgba(0,0,0,0)',
+            margin=dict(l=0, r=0, t=10, b=0),
+            height=200,
+            xaxis=dict(showgrid=False, title=""),
+            yaxis=dict(showgrid=True, gridcolor='#222', title="", range=[0, 100]),
+        )
+        st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False}, key=f"chart_{marker_id}_{title_suffix}")
+
+    # Tabs for different timeframes
+    t1, t2, t3, t4 = st.tabs(["1D", "1W", "1M", "ALL"])
+    now = datetime.now()
     
-    import plotly.graph_objects as go
-    
-    fig = go.Figure()
-    
-    # Add Area Chart
-    fig.add_trace(go.Scatter(
-        x=df['Date'], y=df['Price'],
-        fill='tozeroy',
-        line=dict(color='#55aaff', width=3),
-        fillcolor='rgba(85, 170, 255, 0.1)',
-        hovertemplate='Price: %{y:.1f}%<br>Date: %{x}<extra></extra>'
-    ))
-    
-    fig.update_layout(
-        template="plotly_dark",
-        paper_bgcolor='rgba(0,0,0,0)',
-        plot_bgcolor='rgba(0,0,0,0)',
-        margin=dict(l=0, r=0, t=30, b=0),
-        height=250,
-        xaxis=dict(showgrid=False, title=""),
-        yaxis=dict(showgrid=True, gridcolor='#222', title="Prob (%)", range=[0, 100]),
-        title=dict(text=f"{name} - Price History", font=dict(color='#ffcc00', size=14))
-    )
-    
-    st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
+    with t1:
+        d1 = df[df['Date'] >= (now - timedelta(days=1))]
+        if not d1.empty: render_fig(d1, "1d")
+        else: st.info("No data for 1D")
+        
+    with t2:
+        dw = df[df['Date'] >= (now - timedelta(weeks=1))]
+        if not dw.empty: render_fig(dw, "1w")
+        else: st.info("No data for 1W")
+        
+    with t3:
+        dm = df[df['Date'] >= (now - timedelta(days=30))]
+        if not dm.empty: render_fig(dm, "1m")
+        else: st.info("No data for 1M")
+        
+    with t4:
+        render_fig(df, "all")
 
 # --- MAIN APP ---
 
 def main():
-    st.set_page_config(page_title="Bloomberg | PREDICT", layout="wide", initial_sidebar_state="collapsed")
-    apply_bloomberg_style()
+    st.set_page_config(page_title="SA Prediction Markets Dashboard", layout="wide", initial_sidebar_state="collapsed")
+    apply_custom_style()
     
     # Top Bar
     t1, t2, t3 = st.columns([2, 2, 1])
     with t1:
-        st.markdown("<div style='font-size: 24px; font-weight: bold; color: #ffcc00; margin-top: 5px;'>PREDICT <span style='color: #888; font-weight: normal; font-size: 14px; margin-left: 10px;'>Prediction Markets</span></div>", unsafe_allow_html=True)
+        st.markdown("<div style='font-size: 24px; font-weight: bold; color: #ffcc00; margin-top: 5px;'>SA PREDICT <span style='color: #888; font-weight: normal; font-size: 14px; margin-left: 10px;'>Dashboard</span></div>", unsafe_allow_html=True)
     with t2:
         search = st.text_input("Search Tickers...", placeholder="e.g. Fed, Trump, Rates", label_visibility="collapsed")
     with t3:
