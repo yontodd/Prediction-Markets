@@ -527,6 +527,7 @@ def main():
                 if current_sub:
                     st.markdown(f"<div class='bb-subheader'>{current_sub}</div>", unsafe_allow_html=True)
             
+            # Prepare data
             val = item['value']
             c1d, c5d = item['change_1d'], item['change_5d']
             c1d_cls = "bb-value-pos" if c1d > 0 else "bb-value-neg" if c1d < 0 else "bb-value-neutral"
@@ -536,30 +537,32 @@ def main():
             time_str = datetime.now().strftime("%H:%M")
             source_color = "#ff3344" if item['source'] == "Error" else "#55aaff"
 
-            # Create the custom HTML label for the expander
-            expander_label = f"""
-                <div style="display: flex; width: 100%; align-items: center;">
-                    <div style="flex: 0.35; padding-right: 10px;">
-                        <div class="market-name" style="margin:0;">{item['name']}</div>
-                        <div class="contract-name">{item['contract']}</div>
-                    </div>
-                    <div style="flex: 0.1; text-align: right; color: #ffcc00; font-weight: bold;">{val:.1f}%</div>
-                    <div style="flex: 0.08; text-align: right;" class="{c1d_cls}">{c1d:+.1f}</div>
-                    <div style="flex: 0.08; text-align: right;" class="{c5d_cls}">{c5d:+.1f}</div>
-                    <div style="flex: 0.15; padding: 0 10px;">{render_range_bar(item['low_30d'], item['high_30d'], val)}</div>
-                    <div style="flex: 0.1; text-align: right; color: #ccc;">{vol_str}</div>
-                    <div style="flex: 0.1; text-align: right; color: #666; font-size: 11px;">{time_str}</div>
-                    <div style="flex: 0.04; text-align: right;"><span class="source-tag" style="color: {source_color}; border-color: {source_color}33;">{item['source']}</span></div>
-                </div>
-            """
+            # Create a clean data row using st.columns
+            r_cols = st.columns([0.35, 0.1, 0.08, 0.08, 0.15, 0.1, 0.1, 0.04])
             
-            with st.expander(expander_label, expanded=False):
+            with r_cols[0]:
+                st.markdown(f"<div class='market-name' style='line-height:1.2; font-size:13px;'>{item['name']}</div>", unsafe_allow_html=True)
+                st.markdown(f"<div class='contract-name' style='font-size:10px;'>{item['contract']}</div>", unsafe_allow_html=True)
+            
+            r_cols[1].markdown(f"<div style='text-align: right; color: #ffcc00; font-weight: bold; font-size:15px; padding-top:5px;'>{val:.1f}%</div>", unsafe_allow_html=True)
+            r_cols[2].markdown(f"<div style='text-align: right; padding-top:8px;' class='{c1d_cls}'>{c1d:+.1f}</div>", unsafe_allow_html=True)
+            r_cols[3].markdown(f"<div style='text-align: right; padding-top:8px;' class='{c5d_cls}'>{c5d:+.1f}</div>", unsafe_allow_html=True)
+            
+            with r_cols[4]:
+                st.markdown("<div style='padding-top:8px;'></div>", unsafe_allow_html=True)
+                st.markdown(render_range_bar(item['low_30d'], item['high_30d'], val), unsafe_allow_html=True)
+                
+            r_cols[5].markdown(f"<div style='text-align: right; color: #ccc; padding-top:8px;'>{vol_str}</div>", unsafe_allow_html=True)
+            r_cols[6].markdown(f"<div style='text-align: right; color: #666; font-size: 11px; padding-top:8px;'>{time_str}</div>", unsafe_allow_html=True)
+            r_cols[7].markdown(f"<div style='text-align: right; padding-top:8px;'><span class='source-tag' style='color: {source_color}; border-color: {source_color}33;'>{item['source']}</span></div>", unsafe_allow_html=True)
+            
+            # Expander for chart below the row
+            with st.expander(f"📊 DATA / CHART - {item['name']}", expanded=False):
                 if item['source'] != "Error":
                     render_plotly_chart(item['id'], item['name'])
                 st.markdown(f"**Source URL:** [{item['url']}]({item['url']})")
-
-if __name__ == "__main__":
-    main()
+            
+            st.markdown("<hr style='margin: 5px 0; border: 0; border-top: 1px solid #111;'>", unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()
