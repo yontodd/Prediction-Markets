@@ -1,7 +1,3 @@
-[Concept]
-https://polymarket.com/event/will-trump-acquire-greenland-before-2027
-
-[Macroeconomics & Central Banking]
 [Tariffs]
 https://kalshi.com/markets/kxdjtvostariffs/tariffs-case/kxdjtvostariffs
 
@@ -10,7 +6,33 @@ https://polymarket.com/event/fed-decision-in-january
 https://polymarket.com/event/fed-decision-in-march-885
 https://polymarket.com/event/fed-decision-in-april
 https://polymarket.com/event/fed-decision-in-june-825
+https://polymarket.com/event/how-many-fed-rate-cuts-in-2026
 
 [Federal Reserve - Leadership]
 https://polymarket.com/event/who-will-trump-nominate-as-fed-chair
 https://kalshi.com/markets/kxleavepowellgov/jerome-powell-leave-as-fed-governor/kxleavepowellgov-26aug01
+https://kalshi.com/markets/kxleavepowell/powell-leaving/leavepowell-25
+
+[AI]
+https://polymarket.com/event/which-company-has-best-ai-model-end-of-june?tid=1767889847956
+https://kalshi.com/markets/kxoaiagi/openai-achieves-agi/oaiagi
+
+[News/Politics]
+https://kalshi.com/markets/kxtariffchecks/will-americans-receive-tariff-dividends-in-2025/kxtariffchecks-26
+https://polymarket.com/event/will-the-supreme-court-rule-in-favor-of-trumps-tariffs?tid=1767030935914
+https://kalshi.com/markets/controlh/house-winner/controlh-2026
+
+[Military/Geopolitics]
+https://kalshi.com/markets/kxvenezuelaleader/who-will-be-the-head-of-state-of-venezuela-on-date/kxvenezuelaleader-26dec31
+https://polymarket.com/event/us-strike-on-colombia-by-january-31?tid=1767794247321
+https://kalshi.com/markets/kxgreenterritory/greenland-acquisition/kxgreenterritory-29
+https://kalshi.com/markets/kxcanal/panama-canal-retaken/kxcanal-29
+https://polymarket.com/event/khamenei-out-as-supreme-leader-of-iran-by-june-30-747
+https://polymarket.com/event/will-china-invade-taiwan-before-2027?tid=1767030127053
+
+[Sports/Entertainment/Culture/Misc.]
+https://kalshi.com/markets/kxncaaf/ncaaf-championship/kxncaaf-26
+https://polymarket.com/event/oscars-2026-best-picture-winner?tid=1767376926353
+https://kalshi.com/markets/kxnflnfcchamp/national-football-conference-champion/kxnflnfcchamp-25
+https://kalshi.com/markets/kxnflafcchamp/american-football-conference-champion/kxnflafcchamp-25
+https://kalshi.com/markets/kxnflmvp/ap-pro-football-regular-season-mvp/kxnflmvp-26
