@@ -278,43 +278,68 @@ def parse_markets_file():
 def fetch_kalshi_data(url):
     session = st.session_state.kalshi_session
     try:
-        ticker_match = re.search(r'markets/([^/]+)', url)
-        if not ticker_match: return []
-        ticker = ticker_match.group(1)
+        # Improved ticker extraction for URLs like /markets/event_ticker/slug/market_ticker
+        parts = url.strip('/').split('/')
+        if 'markets' not in parts: return []
+        idx = parts.index('markets')
+        if len(parts) <= idx + 1: return []
         
-        # Try Elections API first
-        api_url = f"https://api.elections.kalshi.com/trade-api/v2/markets/{ticker}"
-        response = session.get(api_url, timeout=10)
+        event_ticker = parts[idx+1]
+        market_ticker = parts[-1] if len(parts) > idx + 3 else event_ticker
         
-        if response.status_code == 200:
-            data = response.json()
-            markets = [data.get('market', {})]
-        else:
-            # Try Main API as fallback
-            api_url = f"https://api.kalshi.com/trade-api/v2/markets/{ticker}"
-            response = session.get(api_url, timeout=10)
-            
-            if response.status_code != 200:
-                # Try Event API on elections
-                api_url = f"https://api.elections.kalshi.com/trade-api/v2/events/{ticker}"
-                response = session.get(api_url, timeout=10)
-            
-            data = response.json()
-            markets = data.get('markets', [])
-            event_title = data.get('event', {}).get('title', 'Kalshi Event')
+        # Try both endpoints and both subdomains
+        # Patterns to try in order
+        attempts = [
+            (f"https://api.elections.kalshi.com/trade-api/v2/events/{event_ticker}", "event"),
+            (f"https://api.kalshi.com/trade-api/v2/events/{event_ticker}", "event"),
+            (f"https://api.elections.kalshi.com/trade-api/v2/markets/{market_ticker}", "market"),
+            (f"https://api.kalshi.com/trade-api/v2/markets/{market_ticker}", "market")
+        ]
+        
+        data = None
+        for api_url, mode in attempts:
+            try:
+                resp = session.get(api_url, timeout=5)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    is_event = (mode == "event")
+                    break
+            except:
+                continue
+        
+        if not data:
+            return [{
+                "id": f"err_{url}",
+                "name": "Connection Error",
+                "contract": "Could not reach Kalshi API",
+                "value": 0,
+                "change_1d": 0,
+                "change_5d": 0,
+                "low_30d": 0,
+                "high_30d": 100,
+                "volume": 0,
+                "source": "Error",
+                "url": url
+            }]
+        
+        markets = data.get('markets', [data.get('market', data)]) if is_event else [data.get('market', data)]
+        event_title = data.get('event', {}).get('title', 'Kalshi Event') if is_event else data.get('market', {}).get('event_title', 'Kalshi Market')
 
         results = []
         for m in markets:
-            if not m: continue
+            if not m or not isinstance(m, dict): continue
+            # Basic validation that it's a market object
+            if 'last_price' not in m and 'title' not in m: continue
+            
             val = m.get('last_price', 0)
-            m_ticker = m.get('ticker', ticker)
+            m_ticker = m.get('ticker', market_ticker)
             marker_id = f"kalshi_{m_ticker}"
             update_history(marker_id, val)
             c1d, c5d = get_changes(marker_id, val)
             
             results.append({
                 "id": marker_id,
-                "name": m.get('event_title', event_title if 'event_title' not in m else 'Kalshi'),
+                "name": m.get('event_title', event_title),
                 "contract": m.get('title', ''),
                 "value": val,
                 "change_1d": c1d,
@@ -327,7 +352,6 @@ def fetch_kalshi_data(url):
             })
         return results
     except Exception as e:
-        st.sidebar.error(f"Kalshi Error ({url}): {e}")
         return []
 
 def fetch_polymarket_data(url):
@@ -386,7 +410,6 @@ def fetch_polymarket_data(url):
             })
         return results
     except Exception as e:
-        st.sidebar.error(f"Polymarket Error ({url}): {e}")
         return []
 
 # --- COMPONENTS ---
@@ -444,7 +467,9 @@ def main():
 
     import textwrap
     for cat_name, items in grouped_data.items():
-        if not items: continue
+        if not items: 
+            # Still show the header if there was a category intended
+            continue
         
         st.markdown(f"<div class='bb-header'>{cat_name}</div>", unsafe_allow_html=True)
         
@@ -481,6 +506,9 @@ def main():
             
             time_str = datetime.now().strftime("%H:%M")
             
+            # Special color for error source
+            source_color = "#ff3344" if item['source'] == "Error" else "#55aaff"
+            
             html += f"""
 <tr>
 <td>
@@ -493,7 +521,7 @@ def main():
 <td>{render_range_bar(item['low_30d'], item['high_30d'], val)}</td>
 <td style="text-align: right;">{vol_str}</td>
 <td style="text-align: right; color: #666; font-size: 11px;">{time_str}</td>
-<td style="text-align: right;"><span class="source-tag">{item['source']}</span></td>
+<td style="text-align: right;"><span class="source-tag" style="color: {source_color}; border-color: {source_color}33;">{item['source']}</span></td>
 </tr>"""
             
         html += "</tbody></table>"
