@@ -97,99 +97,143 @@ def apply_custom_style():
         <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
         
-        /* Premium Dark Theme */
-        .stApp {
-            background-color: #0e1117 !important;
-            color: #fafafa !important;
-            font-family: 'Inter', sans-serif !important;
+        /* Theme Variables */
+        :root {
+            --sa-bg: #fff;
+            --sa-text: #1e293b;
+            --sa-subtext: #475569;
+            --sa-border: #e2e8f0;
+            --sa-header-bg: linear-gradient(90deg, #f8fafc 0%, #f1f5f9 100%);
+            --sa-accent: #d97706;
+            --sa-source: #0284c7;
+            --sa-price: #d97706;
+            --sa-tab-active: #d97706;
+            --sa-tab-text: #475569;
         }
 
-        [data-testid="stHeader"] {
-            background-color: #0e1117 !important;
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --sa-bg: #0e1117;
+                --sa-text: #f8fafc;
+                --sa-subtext: #94a3b8;
+                --sa-border: #1e293b;
+                --sa-header-bg: linear-gradient(90deg, #1e293b 0%, #0f172a 100%);
+                --sa-accent: #fbbf24;
+                --sa-source: #38bdf8;
+                --sa-price: #fbbf24;
+                --sa-tab-active: #fbbf24;
+                --sa-tab-text: #cbd5e1;
+            }
+        }
+
+        .stApp {
+            font-family: 'Inter', sans-serif !important;
         }
 
         /* Modern Section Headers */
         .bb-header {
-            background: linear-gradient(90deg, #1e293b 0%, #0f172a 100%) !important;
-            color: #fbbf24 !important;
+            background: var(--sa-header-bg) !important;
+            color: var(--sa-accent) !important;
             padding: 10px 16px !important;
             font-weight: 700 !important;
             font-size: 15px !important;
             margin-top: 32px !important;
             margin-bottom: 8px !important;
-            border-left: 4px solid #fbbf24 !important;
+            border-left: 4px solid var(--sa-accent) !important;
             border-radius: 4px !important;
             text-transform: uppercase !important;
             letter-spacing: 0.05em !important;
             display: block !important;
             width: 100% !important;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1) !important;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
         }
         
         .bb-subheader {
-            background-color: rgba(30, 41, 59, 0.5) !important;
-            color: #cbd5e1 !important;
-            padding: 6px 16px !important;
+            background-color: transparent !important;
+            color: var(--sa-subtext) !important;
+            padding: 6px 0 !important;
             font-size: 11px !important;
-            font-weight: 600 !important;
+            font-weight: 700 !important;
             text-transform: uppercase !important;
             letter-spacing: 0.1em !important;
-            border-bottom: 1px solid #334155 !important;
+            border-bottom: 1px solid var(--sa-border) !important;
             margin-bottom: 12px !important;
         }
 
-        /* Clean Table Styles */
-        .bb-value-pos { color: #10b981 !important; font-weight: 600 !important; } /* Emerald */
-        .bb-value-neg { color: #ef4444 !important; font-weight: 600 !important; } /* Red */
-        .bb-value-neutral { color: #94a3b8 !important; }
-        
-        .market-name { color: #f8fafc !important; font-weight: 600 !important; font-size: 14px !important; margin-bottom: 2px !important; }
-        .contract-name { color: #94a3b8 !important; font-size: 11px !important; font-weight: 400 !important; }
-        .source-tag { 
-            font-size: 10px !important; 
-            color: #38bdf8 !important; 
-            font-weight: 700 !important; 
-            border: 1px solid rgba(56, 189, 248, 0.2) !important; 
-            padding: 2px 6px !important; 
-            border-radius: 4px !important; 
-            background: rgba(56, 189, 248, 0.05) !important;
+        /* Chart Tabs Visibility Fix */
+        button[data-baseweb="tab"] {
+            padding: 10px 20px !important;
         }
         
-        .price-val { font-weight: 700 !important; font-size: 17px !important; color: #fbbf24 !important; }
+        button[data-baseweb="tab"] p {
+            font-weight: 700 !important;
+            font-size: 13px !important;
+            color: var(--sa-tab-text) !important;
+        }
+        
+        button[aria-selected="true"] p {
+            color: var(--sa-tab-active) !important;
+        }
+
+        /* Value Colors */
+        .bb-value-pos { color: #10b981 !important; font-weight: 600 !important; }
+        .bb-value-neg { color: #ef4444 !important; font-weight: 600 !important; }
+        .bb-value-neutral { color: var(--sa-subtext) !important; }
+        
+        .market-name { color: var(--sa-text) !important; font-weight: 600 !important; font-size: 14px !important; margin-bottom: 2px !important; }
+        .contract-name { color: var(--sa-subtext) !important; font-size: 11px !important; font-weight: 400 !important; }
+        
+        .source-tag { 
+            font-size: 10px !important; 
+            color: var(--sa-source) !important; 
+            font-weight: 700 !important; 
+            border: 1px solid var(--sa-source) !important; 
+            padding: 2px 6px !important; 
+            border-radius: 4px !important; 
+            background: transparent !important;
+        }
+        
+        .price-val { font-weight: 700 !important; font-size: 17px !important; color: var(--sa-price) !important; }
+
+        /* Expander Improvements */
+        .stExpander {
+            border: none !important;
+            border-bottom: 1px solid var(--sa-border) !important;
+        }
+        
+        [data-testid="stExpanderDetails"] {
+            border-radius: 0 0 8px 8px !important;
+            padding: 20px !important;
+        }
+
+        /* Links */
+        .source-url-link {
+            color: var(--sa-source) !important;
+            text-decoration: none !important;
+            font-weight: 600 !important;
+        }
+        .source-url-link:hover {
+            text-decoration: underline !important;
+        }
 
         /* Modern Input/Buttons */
         .stTextInput input {
-            background-color: #1e293b !important;
-            color: #f8fafc !important;
-            border: 1px solid #334155 !important;
+            border: 1px solid var(--sa-border) !important;
             border-radius: 8px !important;
         }
         
         .stButton button {
-            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%) !important;
-            color: #fbbf24 !important;
-            border: 1px solid #334155 !important;
+            background: var(--sa-header-bg) !important;
+            color: var(--sa-accent) !important;
+            border: 1px solid var(--sa-border) !important;
             border-radius: 8px !important;
             font-weight: 600 !important;
             transition: all 0.2s !important;
         }
         
         .stButton button:hover {
-            border-color: #fbbf24 !important;
-            box-shadow: 0 0 10px rgba(251, 191, 36, 0.1) !important;
-        }
-
-        /* Expander Styling */
-        .stExpander {
-            background-color: transparent !important;
-            border: none !important;
-            border-bottom: 1px solid #1e293b !important;
-        }
-        
-        [data-testid="stExpanderDetails"] {
-            background-color: #0f172a !important;
-            border-radius: 0 0 8px 8px !important;
-            padding: 20px !important;
+            border-color: var(--sa-accent) !important;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.05) !important;
         }
 
         /* Hide streamlit elements */
@@ -198,7 +242,7 @@ def apply_custom_style():
         [data-testid="stDecoration"] {display: none;}
         
         hr {
-            border-top: 1px solid #1e293b !important;
+            border-top: 1px solid var(--sa-border) !important;
             margin: 10px 0 !important;
         }
         </style>
@@ -504,18 +548,18 @@ def render_plotly_chart(marker_id, name, history_data=None):
         fig.add_trace(go.Scatter(
             x=data['Date'], y=data['Price'],
             fill='tozeroy',
-            line=dict(color='#55aaff', width=2),
-            fillcolor='rgba(85, 170, 255, 0.1)',
+            line=dict(color='#0ea5e9', width=2.5), # Vibrant Sky Blue
+            fillcolor='rgba(14, 165, 233, 0.1)',
             hovertemplate='Price: %{y:.1f}%<br>Date: %{x}<extra></extra>'
         ))
         fig.update_layout(
-            template="plotly_dark",
             paper_bgcolor='rgba(0,0,0,0)',
             plot_bgcolor='rgba(0,0,0,0)',
             margin=dict(l=0, r=0, t=10, b=0),
-            height=200,
+            height=220,
             xaxis=dict(showgrid=False, title=""),
-            yaxis=dict(showgrid=True, gridcolor='#222', title="", range=[0, 100]),
+            yaxis=dict(showgrid=True, gridcolor='rgba(128, 128, 128, 0.1)', title="", range=[0, 101]),
+            hovermode="x unified",
         )
         st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False}, key=f"chart_{marker_id}_{title_suffix}")
 
@@ -641,7 +685,7 @@ def main():
             with st.expander(f"📊 DATA / CHART - {m_name}", expanded=False):
                 if source != "Error":
                     render_plotly_chart(m_id, m_name, item.get('history_data'))
-                st.markdown(f"<div style='margin-top:15px; font-size:11px; color:#64748b;'>**Source URL:** [{m_url}]({m_url})</div>", unsafe_allow_html=True)
+                st.markdown(f"<div style='margin-top:15px; font-size:11px; color:var(--sa-subtext);'><b>Source URL:</b> <a href='{m_url}' target='_blank' class='source-url-link'>{m_url}</a></div>", unsafe_allow_html=True)
             
             st.markdown("<hr>", unsafe_allow_html=True)
 
