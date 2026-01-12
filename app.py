@@ -278,21 +278,42 @@ def update_history(marker_id, price):
     
     save_history(history)
 
-def get_changes(marker_id, current_price):
-    history = load_history().get(marker_id, {})
+def get_changes(marker_id, current_price, history_dict=None):
+    # Use provided history or fall back to local cache
+    history = history_dict if history_dict else load_history().get(marker_id, {})
+    if not history or len(history) < 2:
+        return 0.0, 0.0
     
-    def get_past_price(days_ago):
-        target_date = (datetime.now() - timedelta(days=days_ago)).strftime("%Y-%m-%d")
-        dates = sorted([d for d in history.keys() if d <= target_date], reverse=True)
-        return history[dates[0]] if dates else None
+    try:
+        # Convert keys to datetimes and sort
+        df = pd.DataFrame([{"Date": pd.to_datetime(t), "Price": p} for t, p in history.items()])
+        df = df.sort_values("Date")
+        
+        now = datetime.now()
+        
+        def get_past_val(days):
+            target = now - timedelta(days=days)
+            # Filter for points before target
+            past_points = df[df['Date'] <= target]
+            if not past_points.empty:
+                # Return the most recent point before target
+                return past_points.iloc[-1]['Price']
+            # Fallback for very new markets: return the first data point if it's older than 1hr
+            elif not df.empty and (now - df.iloc[0]['Date']).total_seconds() > 3600:
+                return df.iloc[0]['Price']
+            return None
 
-    p1d = get_past_price(1)
-    p5d = get_past_price(5)
-    
-    c1d = current_price - p1d if p1d is not None else 0.0
-    c5d = current_price - p5d if p5d is not None else 0.0
-    
-    return c1d, c5d
+        p1d = get_past_val(1)
+        p5d = get_past_val(5)
+        
+        if p1d is None and len(df) > 1:
+            p1d = df.iloc[0]['Price']
+            
+        c1d = current_price - p1d if p1d is not None else 0.0
+        c5d = current_price - p5d if p5d is not None else 0.0
+        return c1d, c5d
+    except:
+        return 0.0, 0.0
 
 # --- DATA FETCHING ---
 
@@ -421,7 +442,7 @@ def fetch_kalshi_data(url):
             if not history:
                 history = {datetime.now().isoformat(): val}
                 
-            c1d, c5d = get_changes(marker_id, val)
+            c1d, c5d = get_changes(marker_id, val, history)
             
             results.append({
                 "id": marker_id,
@@ -493,7 +514,7 @@ def fetch_polymarket_data(url):
             if not history:
                 history = {datetime.now().isoformat(): val}
                 
-            c1d, c5d = get_changes(marker_id, val)
+            c1d, c5d = get_changes(marker_id, val, history)
             
             results.append({
                 "id": marker_id,
