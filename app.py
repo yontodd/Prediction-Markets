@@ -305,7 +305,21 @@ def fetch_kalshi_data(url):
                 continue
         
         if not data:
-            return [{"id": f"err_{url}", "name": "Err", "contract": "API Fail", "value": 0, "source": "Error", "url": url}]
+            return [{
+                "id": f"err_{url}",
+                "name": "Connection Error",
+                "contract": "Could not reach Kalshi API",
+                "value": 0,
+                "buy_price": 0,
+                "change_1d": 0,
+                "change_5d": 0,
+                "low_30d": 0,
+                "high_30d": 100,
+                "volume": 0,
+                "source": "Error",
+                "url": url,
+                "history_data": {}
+            }]
         
         markets_data = data.get('markets', [data.get('market', data)]) if is_event else [data.get('market', data)]
         event_title = data.get('event', {}).get('title', 'Kalshi Event') if is_event else data.get('market', {}).get('event_title', 'Kalshi Market')
@@ -355,7 +369,21 @@ def fetch_kalshi_data(url):
             })
         return results
     except Exception as e:
-        return []
+        return [{
+            "id": f"err_{url}",
+            "name": "Kalshi Fetch Error",
+            "contract": str(e)[:100],
+            "value": 0,
+            "buy_price": 0,
+            "change_1d": 0,
+            "change_5d": 0,
+            "low_30d": 0,
+            "high_30d": 100,
+            "volume": 0,
+            "source": "Error",
+            "url": url,
+            "history_data": {}
+        }]
 
 def fetch_polymarket_data(url):
     try:
@@ -428,7 +456,21 @@ def fetch_polymarket_data(url):
             })
         return results
     except Exception as e:
-        return []
+        return [{
+            "id": f"err_{url}",
+            "name": "Poly Fetch Error",
+            "contract": str(e)[:100],
+            "value": 0,
+            "buy_price": 0,
+            "change_1d": 0,
+            "change_5d": 0,
+            "low_30d": 0,
+            "high_30d": 100,
+            "volume": 0,
+            "source": "Error",
+            "url": url,
+            "history_data": {}
+        }]
 
 # --- COMPONENTS ---
 
@@ -532,55 +574,62 @@ def main():
         
         st.markdown(f"<div class='bb-header'>{cat_name}</div>", unsafe_allow_html=True)
         
-        # Column Headers [Concept, BUY, LAST, 1D, 5D, Range, Vol, Update, Src]
-        h_cols = st.columns([0.3, 0.08, 0.08, 0.08, 0.08, 0.15, 0.08, 0.1, 0.05])
-        headers = ["CONCEPT / EVENT", "BUY", "LAST", "1D", "5D", "RANGE", "VOL", "UPDATE", "SRC"]
+        # Column Headers: Concept, Price, 1D, 5D, Range, Vol, Update, Src
+        h_cols = st.columns([0.35, 0.1, 0.08, 0.08, 0.15, 0.1, 0.1, 0.04])
+        headers = ["CONCEPT / EVENT", "PRICE", "1D", "5D", "RANGE", "VOL", "UPDATE", "SRC"]
         for col, text in zip(h_cols, headers):
             col.markdown(f"<div style='color: #888; font-size: 11px; font-weight: bold; padding: 10px 0;'>{text}</div>", unsafe_allow_html=True)
         
         current_sub = None
         for item in items:
-            if item['subcategory'] != current_sub:
-                current_sub = item['subcategory']
+            if item.get('subcategory') != current_sub:
+                current_sub = item.get('subcategory')
                 if current_sub:
                     st.markdown(f"<div class='bb-subheader'>{current_sub}</div>", unsafe_allow_html=True)
             
-            # Prepare data
-            val = item['value']
-            buy = item.get('buy_price', val)
-            c1d, c5d = item['change_1d'], item['change_5d']
+            # Prepare data with safe defaults
+            val = item.get('value', 0)
+            c1d = item.get('change_1d', 0)
+            c5d = item.get('change_5d', 0)
+            low_30 = item.get('low_30d', 0)
+            high_30 = item.get('high_30d', 100)
+            vol = item.get('volume', 0)
+            source = item.get('source', 'Unknown')
+            m_url = item.get('url', '#')
+            m_id = item.get('id', 'unknown')
+            m_name = item.get('name', 'Unknown')
+            m_contract = item.get('contract', '')
+            
             c1d_cls = "bb-value-pos" if c1d > 0 else "bb-value-neg" if c1d < 0 else "bb-value-neutral"
             c5d_cls = "bb-value-pos" if c5d > 0 else "bb-value-neg" if c5d < 0 else "bb-value-neutral"
-            vol = item['volume']
             vol_str = f"{vol/1e6:.1f}M" if vol >= 1e6 else f"{vol/1e3:.0f}k" if vol >= 1e3 else str(int(vol))
             time_str = datetime.now().strftime("%H:%M")
-            source_color = "#ff3344" if item['source'] == "Error" else "#55aaff"
+            source_color = "#ff3344" if source == "Error" else "#55aaff"
 
             # Create a clean data row using st.columns
-            r_cols = st.columns([0.3, 0.08, 0.08, 0.08, 0.08, 0.15, 0.08, 0.1, 0.05])
+            r_cols = st.columns([0.35, 0.1, 0.08, 0.08, 0.15, 0.1, 0.1, 0.04])
             
             with r_cols[0]:
-                st.markdown(f"<div class='market-name' style='line-height:1.2; font-size:13px;'>{item['name']}</div>", unsafe_allow_html=True)
-                st.markdown(f"<div class='contract-name' style='font-size:10px;'>{item['contract']}</div>", unsafe_allow_html=True)
+                st.markdown(f"<div class='market-name' style='line-height:1.2; font-size:13px;'>{m_name}</div>", unsafe_allow_html=True)
+                st.markdown(f"<div class='contract-name' style='font-size:10px;'>{m_contract}</div>", unsafe_allow_html=True)
             
-            r_cols[1].markdown(f"<div style='text-align: right; color: #00ff66; font-weight: bold; font-size:15px; padding-top:5px;'>{buy:.1f}%</div>", unsafe_allow_html=True)
-            r_cols[2].markdown(f"<div style='text-align: right; color: #ffcc00; font-weight: bold; font-size:15px; padding-top:5px;'>{val:.1f}%</div>", unsafe_allow_html=True)
-            r_cols[3].markdown(f"<div style='text-align: right; padding-top:8px;' class='{c1d_cls}'>{c1d:+.1f}</div>", unsafe_allow_html=True)
-            r_cols[4].markdown(f"<div style='text-align: right; padding-top:8px;' class='{c5d_cls}'>{c5d:+.1f}</div>", unsafe_allow_html=True)
+            r_cols[1].markdown(f"<div style='text-align: right; color: #ffcc00; font-weight: bold; font-size:15px; padding-top:5px;'>{val:.1f}%</div>", unsafe_allow_html=True)
+            r_cols[2].markdown(f"<div style='text-align: right; padding-top:8px;' class='{c1d_cls}'>{c1d:+.1f}</div>", unsafe_allow_html=True)
+            r_cols[3].markdown(f"<div style='text-align: right; padding-top:8px;' class='{c5d_cls}'>{c5d:+.1f}</div>", unsafe_allow_html=True)
             
-            with r_cols[5]:
+            with r_cols[4]:
                 st.markdown("<div style='padding-top:8px;'></div>", unsafe_allow_html=True)
-                st.markdown(render_range_bar(item['low_30d'], item['high_30d'], val), unsafe_allow_html=True)
+                st.markdown(render_range_bar(low_30, high_30, val), unsafe_allow_html=True)
                 
-            r_cols[6].markdown(f"<div style='text-align: right; color: #ccc; padding-top:8px;'>{vol_str}</div>", unsafe_allow_html=True)
-            r_cols[7].markdown(f"<div style='text-align: right; color: #666; font-size: 11px; padding-top:8px;'>{time_str}</div>", unsafe_allow_html=True)
-            r_cols[8].markdown(f"<div style='text-align: right; padding-top:8px;'><span class='source-tag' style='color: {source_color}; border-color: {source_color}33;'>{item['source']}</span></div>", unsafe_allow_html=True)
+            r_cols[5].markdown(f"<div style='text-align: right; color: #ccc; padding-top:8px;'>{vol_str}</div>", unsafe_allow_html=True)
+            r_cols[6].markdown(f"<div style='text-align: right; color: #666; font-size: 11px; padding-top:8px;'>{time_str}</div>", unsafe_allow_html=True)
+            r_cols[7].markdown(f"<div style='text-align: right; padding-top:8px;'><span class='source-tag' style='color: {source_color}; border-color: {source_color}33;'>{source}</span></div>", unsafe_allow_html=True)
             
             # Expander for chart below the row
-            with st.expander(f"📊 DATA / CHART - {item['name']}", expanded=False):
-                if item['source'] != "Error":
-                    render_plotly_chart(item['id'], item['name'], item.get('history_data'))
-                st.markdown(f"**Source URL:** [{item['url']}]({item['url']})")
+            with st.expander(f"📊 DATA / CHART - {m_name}", expanded=False):
+                if source != "Error":
+                    render_plotly_chart(m_id, m_name, item.get('history_data'))
+                st.markdown(f"**Source URL:** [{m_url}]({m_url})")
             
             st.markdown("<hr style='margin: 5px 0; border: 0; border-top: 1px solid #111;'>", unsafe_allow_html=True)
 
