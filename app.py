@@ -334,11 +334,6 @@ def parse_markets_file():
 @st.cache_data(ttl=600)
 def fetch_kalshi_data(url):
     try:
-        # Create a temporary session for cached fetch
-        session = requests.Session()
-        # Non-signer session for public data fetching to avoid complicated state in cache
-        # If needed, we could implement a more complex signer cache, but public endpoints usually suffice.
-    try:
         session = get_kalshi_session()
         headers = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"}
         
