@@ -816,8 +816,8 @@ def main():
                 "1d Change": st.column_config.NumberColumn("1d Δ", format="%+1.1f%%"),
                 "7d Change": st.column_config.NumberColumn("7d Δ", format="%+1.1f%%"),
                 "30d Change": st.column_config.NumberColumn("30d Δ", format="%+1.1f%%"),
-                "24h Vol": st.column_config.ProgressColumn("24h Vol", format="$%.0f", min_value=0, max_value=float(max(target_df['24h Vol'].max(), 1))),
-                "Total Vol": st.column_config.NumberColumn("Total Vol", format="$%.0f"),
+                "24h Vol": st.column_config.ProgressColumn("24h Vol", format="$%,.0f", min_value=0, max_value=float(max(target_df['24h Vol'].max(), 1))),
+                "Total Vol": st.column_config.NumberColumn("Total Vol", format="$%,.0f"),
                 "Source": st.column_config.LinkColumn("Source", display_text=r"#(.+)$")
             },
             height=height,
