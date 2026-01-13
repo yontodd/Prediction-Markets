@@ -435,12 +435,18 @@ def fetch_kalshi_data(url):
             if not m_ticker: continue
 
             # Determine Contract Name
-            # If title is generic (same as event) and subtitle missing, try ticker suffix
-            contract_name = m.get('title', m.get('subtitle', ''))
+            # Priority 1: Subtitle (contains the specific differentiation like "Before 2025")
+            contract_name = m.get('subtitle')
             
-            # Heuristic: If contract name matches event title exactly, it's likely generic.
-            # Or if it contains 'Winner?' which is common in questions
-            if contract_name == base_title or 'Winner?' in contract_name or not contract_name:
+            # Priority 2: Title (if subtitle is missing)
+            if not contract_name:
+                contract_name = m.get('title')
+            
+            # Priority 3: Ticker Parsing (if name is generic/redundant)
+            # Check if name is same as event title or contains generic "Winner?" text
+            is_generic = (contract_name == base_title) or ('Winner?' in str(contract_name)) or (not contract_name)
+            
+            if is_generic:
                 # Try to parse from ticker: KXNFLNFCCHAMP-25-SEA -> SEA
                 # Split by dash, take last part if it looks like an acronym or name
                 parts = m_ticker.split('-')
