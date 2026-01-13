@@ -715,6 +715,26 @@ def main():
                 except Exception as e:
                     st.error(f"Error fetching {config['url']}: {e}")
 
+    # FILTERING LOGIC: If a contract (Event) has 6 or more sub-contracts, limit to just the top 3 by price
+    # Group by event_id to apply filter
+    event_groups = {}
+    for item in all_items:
+        eid = item['event_id']
+        if eid not in event_groups: event_groups[eid] = []
+        event_groups[eid].append(item)
+    
+    filtered_items = []
+    for eid, markets in event_groups.items():
+        if len(markets) >= 6:
+            # Sort by value descending and take top 3
+            markets.sort(key=lambda x: -x.get('value', 0))
+            filtered_items.extend(markets[:3])
+        else:
+            filtered_items.extend(markets)
+    
+    # Replace all_items with filtered version
+    all_items = filtered_items
+
     # Sort all_items by original order from markets.txt -> then by Price (Value) descending
     all_items.sort(key=lambda x: (x.get('order', 0), -x.get('value', 0)))
 
@@ -781,16 +801,6 @@ def main():
         if ev_id not in structured_data[tab][cat]: structured_data[tab][cat][ev_id] = []
         
         structured_data[tab][cat][ev_id].append(item)
-    
-    # User Request: If a contract (Event) has 6 or more sub-contracts, limit to just the top 3 by price
-    for tab in structured_data:
-        for cat in structured_data[tab]:
-            for ev_id in structured_data[tab][cat]:
-                markets = structured_data[tab][cat][ev_id]
-                if len(markets) >= 6:
-                    # Sort by Value (Price) Descending just to be sure, then take top 3
-                    markets.sort(key=lambda x: -x.get('value', 0))
-                    structured_data[tab][cat][ev_id] = markets[:3]
 
     tab_names = list(structured_data.keys())
     
