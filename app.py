@@ -715,8 +715,8 @@ def main():
                 except Exception as e:
                     st.error(f"Error fetching {config['url']}: {e}")
 
-    # Sort all_items by original order from markets.txt
-    all_items.sort(key=lambda x: (x.get('order', 0), -(x.get('volume24h', 0) or x.get('volume', 0))))
+    # Sort all_items by original order from markets.txt -> then by Price (Value) descending
+    all_items.sort(key=lambda x: (x.get('order', 0), -x.get('value', 0)))
 
     # 1. TOP SUMMARY TABLE
     # Convert all items to a nice DataFrame
