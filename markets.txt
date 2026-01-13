@@ -1,3 +1,4 @@
+[Finance/Economics]
 [Tariffs]
 https://kalshi.com/markets/kxdjtvostariffs/tariffs-case/kxdjtvostariffs
 
@@ -12,8 +13,9 @@ https://polymarket.com/event/how-many-fed-rate-cuts-in-2026
 https://polymarket.com/event/who-will-trump-nominate-as-fed-chair
 https://kalshi.com/markets/kxleavepowellgov/jerome-powell-leave-as-fed-governor/kxleavepowellgov-26aug01
 https://kalshi.com/markets/kxleavepowell/powell-leaving/leavepowell-25
+https://kalshi.com/markets/kxleavelisacook/will-lisa-cook-leave-office/kxleavelisacook-26jan
 
-[Business/Finance]
+[Business]
 [AI]
 https://polymarket.com/event/which-company-has-best-ai-model-end-of-june?tid=1767889847956
 https://kalshi.com/markets/kxoaiagi/openai-achieves-agi/oaiagi
