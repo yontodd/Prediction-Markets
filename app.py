@@ -685,7 +685,17 @@ def main():
     apply_custom_style()
     
     # Top Bar
-    st.markdown("<div style='color: #ffcc00; font-size: 24px; font-weight: bold; margin-bottom: 20px;'>SA <span style='color: #fff; font-weight: normal;'>Predict</span></div>", unsafe_allow_html=True)
+    c1, c2 = st.columns([3, 1])
+    with c1:
+        st.markdown("<div style='color: #ffcc00; font-size: 24px; font-weight: bold; margin-bottom: 20px;'>SA <span style='color: #fff; font-weight: normal;'>Predict</span></div>", unsafe_allow_html=True)
+    with c2:
+        # Right aligned refresh components
+        rc1, rc2 = st.columns([1, 2])
+        with rc1:
+            if st.button("Refresh"):
+                st.rerun()
+        with rc2:
+            st.caption(f"Last updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 
     market_configs = parse_markets_file()
     if not market_configs:
