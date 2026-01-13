@@ -764,27 +764,37 @@ def main():
     # Sort all_items by original order from markets.txt -> then by Price (Value) descending
     all_items.sort(key=lambda x: (x.get('order', 0), -x.get('value', 0)))
 
-    # 1. TOP SUMMARY TABLE
-    # Convert all items to a nice DataFrame
-    df_data = []
-    for m in all_items:
-        df_data.append({
-            "#": m.get('order', 0) + 1,
-            "Ticker": m['id'].split('_')[-1][:10].upper(),
-            "Contract Title": m['name'],
-            "Details": m['contract'],
-            "Value": m['value'],
-            "1d Change": m['change_1d'],
-            "7d Change": m['change_7d'],
-            "30d Change": m['change_30d'],
-            "24h Vol": m.get('volume24h', 0),
-            "Total Vol": m['volume'],
-            "Source": m['source']
-        })
+    # Separate Misc items from Main items for the summary tables
+    misc_cat_name = "[Sports/Entertainment/Culture/Misc.]"
+    main_summary_items = [m for m in all_items if m['category'] != misc_cat_name]
+    misc_summary_items = [m for m in all_items if m['category'] == misc_cat_name]
+
+    def prep_df_data(items):
+        data = []
+        for m in items:
+            # We append the source name as a fragment so we can extract it in the LinkColumn
+            # but we keep the base URL for the actual link.
+            data.append({
+                "#": m.get('order', 0) + 1,
+                "Ticker": m['id'].split('_')[-1][:10].upper(),
+                "Contract Title": m['name'],
+                "Details": m['contract'],
+                "Value": m['value'],
+                "1d Change": m['change_1d'],
+                "7d Change": m['change_7d'],
+                "30d Change": m['change_30d'],
+                "24h Vol": m.get('volume24h', 0),
+                "Total Vol": m['volume'],
+                "Source": f"{m['url']}#{m['source']}"
+            })
+        return pd.DataFrame(data)
     
-    df = pd.DataFrame(df_data)
+    df_main = prep_df_data(main_summary_items)
+    df_misc = prep_df_data(misc_summary_items)
+    
     # Sort initially by the original file order
-    df = df.sort_values("#")
+    if not df_main.empty: df_main = df_main.sort_values("#")
+    if not df_misc.empty: df_misc = df_misc.sort_values("#")
     
     # Styling function for reds/greens
     def color_changes(val):
@@ -793,23 +803,33 @@ def main():
 
     st.markdown("### Market Summary")
     
-    # Display the dataframe with advanced UI components
-    st.dataframe(
-        df.style.map(color_changes, subset=['1d Change', '7d Change', '30d Change']),
-        column_config={
-            "#": st.column_config.NumberColumn("#", help="Original order from markets.txt", format="%d"),
-            "Ticker": st.column_config.TextColumn("Ticker", help="Market Identifier"),
-            "Value": st.column_config.NumberColumn("Price", format="%.1f%%", help="Current probability"),
-            "1d Change": st.column_config.NumberColumn("1d Δ", format="%+1.1f%%"),
-            "7d Change": st.column_config.NumberColumn("7d Δ", format="%+1.1f%%"),
-            "30d Change": st.column_config.NumberColumn("30d Δ", format="%+1.1f%%"),
-            "24h Vol": st.column_config.ProgressColumn("24h Vol", format="$%.0f", min_value=0, max_value=float(max(df['24h Vol'].max(), 1) if not df.empty else 100)),
-            "Total Vol": st.column_config.NumberColumn("Total Vol", format="$%.0f"),
-        },
-        height=500,
-        use_container_width=True,
-        hide_index=True
-    )
+    def render_summary_table(target_df, height=400):
+        if target_df.empty:
+            return
+            
+        st.dataframe(
+            target_df.style.map(color_changes, subset=['1d Change', '7d Change', '30d Change']),
+            column_config={
+                "#": st.column_config.NumberColumn("#", help="Original order from markets.txt", format="%d"),
+                "Ticker": st.column_config.TextColumn("Ticker", help="Market Identifier"),
+                "Value": st.column_config.NumberColumn("Price", format="%.1f%%", help="Current probability"),
+                "1d Change": st.column_config.NumberColumn("1d Δ", format="%+1.1f%%"),
+                "7d Change": st.column_config.NumberColumn("7d Δ", format="%+1.1f%%"),
+                "30d Change": st.column_config.NumberColumn("30d Δ", format="%+1.1f%%"),
+                "24h Vol": st.column_config.ProgressColumn("24h Vol", format="$%.0f", min_value=0, max_value=float(max(target_df['24h Vol'].max(), 1))),
+                "Total Vol": st.column_config.NumberColumn("Total Vol", format="$%.0f"),
+                "Source": st.column_config.LinkColumn("Source", display_text=r"#(.+)$")
+            },
+            height=height,
+            use_container_width=True,
+            hide_index=True
+        )
+
+    render_summary_table(df_main, height=450)
+    
+    if not df_misc.empty:
+        st.markdown(f"### {misc_cat_name}")
+        render_summary_table(df_misc, height=250)
     
     st.markdown("---")
     st.markdown("### Detailed Active Markets")
