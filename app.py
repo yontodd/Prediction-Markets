@@ -6,6 +6,7 @@ import re
 import os
 import base64
 import time
+import pytz
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
 from cryptography.hazmat.primitives import hashes
@@ -695,7 +696,8 @@ def main():
             if st.button("Refresh"):
                 st.rerun()
         with rc2:
-            st.caption(f"Last updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+            et_now = datetime.now(pytz.timezone('US/Eastern'))
+            st.caption(f"Last updated: {et_now.strftime('%Y-%m-%d %H:%M:%S')} ET")
 
     market_configs = parse_markets_file()
     if not market_configs:
