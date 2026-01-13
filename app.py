@@ -410,8 +410,9 @@ def fetch_kalshi_data(url):
         for m in m_list:
             if not m or not isinstance(m, dict): continue
             
-            # Filter: Only open markets
-            if m.get('status') != 'open': continue
+            # Filter: Only open/active markets
+            status = m.get('status', 'open')
+            if status not in ['active', 'open']: continue
             
             # Filter: Check close time
             close_time_str = m.get('close_time')
