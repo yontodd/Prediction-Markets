@@ -774,6 +774,10 @@ def main():
         for m in items:
             # We append the source name as a fragment so we can extract it in the LinkColumn
             # but we keep the base URL for the actual link.
+            # Ensure volumes are numbers and rounded
+            vol24 = float(m.get('volume24h', 0))
+            vol_total = float(m.get('volume', 0))
+            
             data.append({
                 "#": m.get('order', 0) + 1,
                 "Ticker": m['id'].split('_')[-1][:10].upper(),
@@ -783,8 +787,8 @@ def main():
                 "1d Change": m['change_1d'],
                 "7d Change": m['change_7d'],
                 "30d Change": m['change_30d'],
-                "24h Vol": m.get('volume24h', 0),
-                "Total Vol": m['volume'],
+                "24h Vol": vol24,
+                "Total Vol": vol_total,
                 "Source": f"{m['url']}#{m['source']}"
             })
         return pd.DataFrame(data)
@@ -816,7 +820,7 @@ def main():
                 "1d Change": st.column_config.NumberColumn("1d Δ", format="%+1.1f%%"),
                 "7d Change": st.column_config.NumberColumn("7d Δ", format="%+1.1f%%"),
                 "30d Change": st.column_config.NumberColumn("30d Δ", format="%+1.1f%%"),
-                "24h Vol": st.column_config.ProgressColumn("24h Vol", format="$%,.0f", min_value=0, max_value=float(max(target_df['24h Vol'].max(), 1))),
+                "24h Vol": st.column_config.NumberColumn("24h Vol", format="$%,.0f"),
                 "Total Vol": st.column_config.NumberColumn("Total Vol", format="$%,.0f"),
                 "Source": st.column_config.LinkColumn("Source", display_text=r"#(.+)$")
             },
