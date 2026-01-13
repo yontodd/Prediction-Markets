@@ -765,9 +765,9 @@ def main():
     all_items.sort(key=lambda x: (x.get('order', 0), -x.get('value', 0)))
 
     # Separate Misc items from Main items for the summary tables
-    misc_cat_name = "[Sports/Entertainment/Culture/Misc.]"
-    main_summary_items = [m for m in all_items if m['category'] != misc_cat_name]
-    misc_summary_items = [m for m in all_items if m['category'] == misc_cat_name]
+    misc_tab_name = "Sports/Entertainment/Culture/Misc."
+    main_summary_items = [m for m in all_items if m['tab'] != misc_tab_name]
+    misc_summary_items = [m for m in all_items if m['tab'] == misc_tab_name]
 
     def prep_df_data(items):
         data = []
@@ -828,7 +828,7 @@ def main():
     render_summary_table(df_main, height=450)
     
     if not df_misc.empty:
-        st.markdown(f"### {misc_cat_name}")
+        st.markdown(f"### {misc_tab_name}")
         render_summary_table(df_misc, height=250)
     
     st.markdown("---")
