@@ -447,15 +447,18 @@ def fetch_kalshi_data(url):
                             history[ts] = float(p)
             except: pass
             
+            volume = float(m.get('volume', 0))
+            # Fallback for 24h volume aliases
+            vol24 = float(m.get('volume_24h', m.get('volume24h', 0)))
+            
             marker_id = f"kalshi_{m_ticker}"
             update_history(marker_id, val)
             if not history: history = {datetime.now().isoformat(): val}
                 
             c1d, c7d, c30d = get_changes(marker_id, val, history)
             
-            volume = float(m.get('volume', 0))
             # Increase volume filter to prioritize "highest volume"
-            if volume < 5000: continue
+            if volume < 500: continue
 
             results.append({
                 "id": marker_id,
@@ -467,7 +470,7 @@ def fetch_kalshi_data(url):
                 "change_7d": c7d,
                 "change_30d": c30d,
                 "volume": volume,
-                "volume24h": float(m.get('volume_24h', 0)),
+                "volume24h": vol24,
                 "source": "Kalshi",
                 "url": url,
                 "history_data": history
@@ -496,6 +499,10 @@ def fetch_polymarket_data(url):
         
         markets_data = data.get('markets', [data] if 'question' in data else [])
         event_title = data.get('title', data.get('question', 'Polymarket'))
+        
+        # Volume filter
+        volume_main = float(data.get('volume', 0))
+        volume24h_main = float(data.get('volume24h', data.get('volume_24h', 0)))
         
         results = []
         for m in markets_data:
@@ -538,10 +545,13 @@ def fetch_polymarket_data(url):
             
             # Volume filter
             volume = float(m.get('volume', 0))
-            volume24h = float(m.get('volume24h', 0))
-            
-            # Heuristic for "highest volume": either 24h volume is significant or total volume is huge
-            if volume < 10000 and volume24h < 1000: continue
+            # Fallback to event-level 24h volume if market-level is missing/0
+            volume24h = float(m.get('volume24h', m.get('volume_24h', 0)))
+            if volume24h == 0:
+                volume24h = volume24h_main
+
+            # Heuristic for active markets: either 24h volume is present or total volume is significant
+            if volume < 10000 and volume24h < 100: continue
 
             results.append({
                 "id": marker_id,
