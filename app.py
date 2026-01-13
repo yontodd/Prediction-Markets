@@ -233,6 +233,49 @@ def apply_custom_style():
             background-color: var(--bb-accent) !important;
             color: #000000 !important;
         }
+
+        /* HTML Summary Table Styling */
+        .sa-summary-container {
+            width: 100%;
+            overflow-x: auto;
+            margin-bottom: 20px;
+        }
+        .sa-summary-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-family: 'Roboto Mono', monospace;
+            font-size: 11px;
+            color: var(--bb-text);
+        }
+        .sa-summary-table th {
+            text-align: left;
+            padding: 8px 4px;
+            border-bottom: 1px solid #333;
+            color: #888;
+            font-weight: normal;
+            text-transform: uppercase;
+        }
+        .sa-summary-table td {
+            padding: 6px 4px;
+            border-bottom: 1px solid #1a1a1a;
+            vertical-align: middle;
+        }
+        .sa-summary-table tr:hover {
+            background-color: #111;
+        }
+        .sa-summary-table .ticker { color: var(--bb-accent); font-weight: 600; }
+        .sa-summary-table .price { color: var(--bb-yellow); font-weight: 600; text-align: right; }
+        .sa-summary-table .change-pos { color: var(--bb-pos); font-weight: bold; text-align: right; }
+        .sa-summary-table .change-neg { color: var(--bb-neg); font-weight: bold; text-align: right; }
+        .sa-summary-table .change-neu { color: #888; text-align: right; }
+        .sa-summary-table .vol { text-align: right; }
+        .sa-summary-table .source-link { 
+            color: var(--bb-accent); 
+            text-decoration: underline !important; 
+        }
+        .sa-summary-table .source-link:hover {
+            color: #fff;
+        }
         </style>
     """, unsafe_allow_html=True)
 
@@ -769,72 +812,55 @@ def main():
     main_summary_items = [m for m in all_items if m['tab'] != misc_tab_name]
     misc_summary_items = [m for m in all_items if m['tab'] == misc_tab_name]
 
-    def prep_df_data(items):
-        data = []
-        for m in items:
-            # We append the source name as a fragment so we can extract it in the LinkColumn
-            # but we keep the base URL for the actual link.
-            # Ensure volumes are numbers and rounded
-            vol24 = float(m.get('volume24h', 0))
-            vol_total = float(m.get('volume', 0))
-            
-            data.append({
-                "#": m.get('order', 0) + 1,
-                "Ticker": m['id'].split('_')[-1][:10].upper(),
-                "Contract Title": m['name'],
-                "Details": m['contract'],
-                "Value": m['value'],
-                "1d Change": m['change_1d'],
-                "7d Change": m['change_7d'],
-                "30d Change": m['change_30d'],
-                "24h Vol": vol24,
-                "Total Vol": vol_total,
-                "Source": f"{m['url']}#{m['source']}"
-            })
-        return pd.DataFrame(data)
-    
-    df_main = prep_df_data(main_summary_items)
-    df_misc = prep_df_data(misc_summary_items)
-    
-    # Sort initially by the original file order
-    if not df_main.empty: df_main = df_main.sort_values("#")
-    if not df_misc.empty: df_misc = df_misc.sort_values("#")
-    
-    # Styling function for reds/greens
-    def color_changes(val):
-        color = '#00ff66' if val > 0 else '#ff3344' if val < 0 else '#888'
-        return f'color: {color}; font-weight: bold'
-
     st.markdown("### Market Summary")
     
-    def render_summary_table(target_df, height=400):
-        if target_df.empty:
+    def render_html_summary(items):
+        if not items:
             return
             
-        st.dataframe(
-            target_df.style.map(color_changes, subset=['1d Change', '7d Change', '30d Change'])
-                   .format({"24h Vol": "${:,.0f}", "Total Vol": "${:,.0f}"}),
-            column_config={
-                "#": st.column_config.NumberColumn("#", help="Original order from markets.txt", format="%d"),
-                "Ticker": st.column_config.TextColumn("Ticker", help="Market Identifier"),
-                "Value": st.column_config.NumberColumn("Price", format="%.1f%%", help="Current probability"),
-                "1d Change": st.column_config.NumberColumn("1d Δ", format="%+1.1f%%"),
-                "7d Change": st.column_config.NumberColumn("7d Δ", format="%+1.1f%%"),
-                "30d Change": st.column_config.NumberColumn("30d Δ", format="%+1.1f%%"),
-                "24h Vol": st.column_config.NumberColumn("24h Vol"),
-                "Total Vol": st.column_config.NumberColumn("Total Vol"),
-                "Source": st.column_config.LinkColumn("Source", display_text=r"#(.+)$")
-            },
-            height=height,
-            use_container_width=True,
-            hide_index=True
-        )
+        # Non-indented HTML to avoid Markdown code block triggers
+        html = '<div class="sa-summary-container"><table class="sa-summary-table"><thead><tr>'
+        html += '<th style="width: 30px;">#</th>'
+        html += '<th style="width: 80px;">Ticker</th>'
+        html += '<th>Contract Title</th>'
+        html += '<th style="text-align: right; width: 60px;">Price</th>'
+        html += '<th style="text-align: right; width: 60px;">1d Δ</th>'
+        html += '<th style="text-align: right; width: 60px;">7d Δ</th>'
+        html += '<th style="text-align: right; width: 80px;">24h Vol</th>'
+        html += '<th style="text-align: right; width: 100px;">Total Vol</th>'
+        html += '<th style="width: 70px;">Source</th>'
+        html += '</tr></thead><tbody>'
+        
+        for m in items:
+            c1 = m.get('change_1d', 0)
+            c7 = m.get('change_7d', 0)
+            
+            c1_cls = "change-pos" if c1 > 0 else "change-neg" if c1 < 0 else "change-neu"
+            c7_cls = "change-pos" if c7 > 0 else "change-neg" if c7 < 0 else "change-neu"
+            
+            vol24 = m.get('volume24h', 0)
+            vol_total = m.get('volume', 0)
+            
+            html += '<tr>'
+            html += f'<td>{m.get("order", 0) + 1}</td>'
+            html += f'<td><span class="ticker">{m["id"].split("_")[-1][:10].upper()}</span></td>'
+            html += f'<td>{m["name"]} <span style="color:#666; font-size:10px;">({m["contract"]})</span></td>'
+            html += f'<td class="price">{m["value"]:.1f}%</td>'
+            html += f'<td class="{c1_cls}">{c1:+.1f}%</td>'
+            html += f'<td class="{c7_cls}">{c7:+.1f}%</td>'
+            html += f'<td class="vol">${vol24:,.0f}</td>'
+            html += f'<td class="vol">${vol_total:,.0f}</td>'
+            html += f'<td><a href="{m["url"]}" target="_blank" class="source-link">{m["source"]}</a></td>'
+            html += '</tr>'
+            
+        html += '</tbody></table></div>'
+        st.markdown(html, unsafe_allow_html=True)
 
-    render_summary_table(df_main, height=450)
+    render_html_summary(main_summary_items)
     
-    if not df_misc.empty:
+    if misc_summary_items:
         st.markdown(f"### {misc_tab_name}")
-        render_summary_table(df_misc, height=250)
+        render_html_summary(misc_summary_items)
     
     st.markdown("---")
     st.markdown("### Detailed Active Markets")
