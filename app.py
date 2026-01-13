@@ -308,6 +308,7 @@ def parse_markets_file():
     with open("markets.txt", "r") as f:
         lines = f.readlines()
         
+    order_counter = 0
     for i, line in enumerate(lines):
         line = line.strip()
         if not line or line.startswith("#"): continue
@@ -327,8 +328,10 @@ def parse_markets_file():
             "platform": platform, 
             "url": url, 
             "tab": current_tab,
-            "category": current_category
+            "category": current_category,
+            "order": order_counter
         })
+        order_counter += 1
     return items
 
 @st.cache_data(ttl=600)
@@ -387,17 +390,41 @@ def fetch_kalshi_data(url):
         
         # Robust title extraction
         e_obj = data.get('event', {}) if is_event else data.get('market', data)
-        event_title = e_obj.get('title') or e_obj.get('event_title') or e_obj.get('subtitle') or e_obj.get('event_subtitle') or 'Kalshi Event'
+        base_title = e_obj.get('title') or e_obj.get('event_title') or 'Kalshi Event'
+        subtitle = e_obj.get('subtitle') or e_obj.get('event_subtitle') or ''
+        
+        if subtitle and subtitle != base_title:
+            event_title = f"{base_title}: {subtitle}"
+        else:
+            event_title = base_title
         
         # Extra check: if it's a single market and title is generic
-        if not is_event and event_title == 'Kalshi Event':
-            event_title = e_obj.get('ticker') or 'Kalshi Market'
+        if not is_event and (event_title == 'Kalshi Event' or event_title == base_title):
+            ticker_title = e_obj.get('ticker')
+            if ticker_title:
+                event_title = f"{event_title} ({ticker_title})"
 
         results = []
+        now_ts = datetime.utcnow().timestamp()
+        
         for m in m_list:
             if not m or not isinstance(m, dict): continue
             
-            val = m.get('last_price', 0)
+            # Filter: Only open markets
+            if m.get('status') != 'open': continue
+            
+            # Filter: Check close time
+            close_time_str = m.get('close_time')
+            if close_time_str:
+                try:
+                    close_ts = datetime.fromisoformat(close_time_str.replace('Z', '+00:00')).timestamp()
+                    if close_ts < now_ts: continue
+                except: pass
+
+            # Kalshi provides price in cents (1-99)
+            val_raw = m.get('last_price', 0)
+            val = float(val_raw)
+
             m_ticker = m.get('ticker')
             if not m_ticker: continue
             
@@ -415,7 +442,9 @@ def fetch_kalshi_data(url):
                     for c in h_resp.json().get('candlesticks', []):
                         ts = datetime.fromtimestamp(c['end_period_ts']).isoformat()
                         p = c.get('price', {}).get('close') or c.get('yes_ask', {}).get('close') or c.get('yes_bid', {}).get('close')
-                        if p is not None: history[ts] = float(p)
+                        
+                        if p is not None:
+                            history[ts] = float(p)
             except: pass
             
             marker_id = f"kalshi_{m_ticker}"
@@ -424,8 +453,9 @@ def fetch_kalshi_data(url):
                 
             c1d, c7d, c30d = get_changes(marker_id, val, history)
             
-            volume = m.get('volume', 0)
-            if volume < 2000: continue
+            volume = float(m.get('volume', 0))
+            # Increase volume filter to prioritize "highest volume"
+            if volume < 5000: continue
 
             results.append({
                 "id": marker_id,
@@ -437,6 +467,7 @@ def fetch_kalshi_data(url):
                 "change_7d": c7d,
                 "change_30d": c30d,
                 "volume": volume,
+                "volume24h": float(m.get('volume_24h', 0)),
                 "source": "Kalshi",
                 "url": url,
                 "history_data": history
@@ -469,6 +500,9 @@ def fetch_polymarket_data(url):
         results = []
         for m in markets_data:
             if not isinstance(m, dict) or 'question' not in m: continue
+            
+            # Filter: Only active markets
+            if not m.get('active') or m.get('closed'): continue
             
             prices_raw = m.get('outcomePrices', ['0', '0'])
             if isinstance(prices_raw, str):
@@ -504,7 +538,10 @@ def fetch_polymarket_data(url):
             
             # Volume filter
             volume = float(m.get('volume', 0))
-            if volume < 2000: continue
+            volume24h = float(m.get('volume24h', 0))
+            
+            # Heuristic for "highest volume": either 24h volume is significant or total volume is huge
+            if volume < 10000 and volume24h < 1000: continue
 
             results.append({
                 "id": marker_id,
@@ -515,9 +552,8 @@ def fetch_polymarket_data(url):
                 "change_1d": c1d,
                 "change_7d": c7d,
                 "change_30d": c30d,
-                "low_30d": 0,
-                "high_30d": 100,
                 "volume": volume,
+                "volume24h": volume24h,
                 "source": "PolyM",
                 "url": url,
                 "history_data": history
@@ -562,6 +598,8 @@ def render_plotly_chart(marker_id, name, history_data=None):
         st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False}, key=f"chart_{marker_id}_{title_suffix}")
 
     # Tabs for different timeframes
+    # Just render ALL for simplicitly in the new layout, or keep tabs? 
+    # User said "pull up the contract chart (as currently displayed)" so keep functionality.
     t1, t2, t3, t4 = st.tabs(["1D", "1W", "1M", "ALL"])
     now = datetime.now()
     
@@ -599,7 +637,7 @@ def main():
 
     # Data Fetching (Parallel)
     all_items = []
-    with st.spinner("UPDATING..."):
+    with st.spinner("Fetching Data..."):
         with ThreadPoolExecutor(max_workers=10) as executor:
             future_to_config = {
                 executor.submit(
@@ -615,20 +653,67 @@ def main():
                     for m in markets:
                         m['tab'] = config['tab']
                         m['category'] = config['category']
+                        m['order'] = config.get('order', 0)
                         all_items.append(m)
                 except Exception as e:
                     st.error(f"Error fetching {config['url']}: {e}")
 
-    if not all_items:
-        st.warning("No data found matching criteria.")
-        return
+    # Sort all_items by original order from markets.txt
+    all_items.sort(key=lambda x: (x.get('order', 0), -(x.get('volume24h', 0) or x.get('volume', 0))))
 
+    # 1. TOP SUMMARY TABLE
+    # Convert all items to a nice DataFrame
+    df_data = []
+    for m in all_items:
+        df_data.append({
+            "#": m.get('order', 0) + 1,
+            "Ticker": m['id'].split('_')[-1][:10].upper(),
+            "Contract Title": m['name'],
+            "Details": m['contract'],
+            "Value": m['value'],
+            "1d Change": m['change_1d'],
+            "7d Change": m['change_7d'],
+            "30d Change": m['change_30d'],
+            "24h Vol": m.get('volume24h', 0),
+            "Total Vol": m['volume'],
+            "Source": m['source']
+        })
+    
+    df = pd.DataFrame(df_data)
+    # Sort initially by the original file order
+    df = df.sort_values("#")
+    
+    # Styling function for reds/greens
+    def color_changes(val):
+        color = '#00ff66' if val > 0 else '#ff3344' if val < 0 else '#888'
+        return f'color: {color}; font-weight: bold'
+
+    st.markdown("### Market Summary")
+    
+    # Display the dataframe with advanced UI components
+    st.dataframe(
+        df.style.map(color_changes, subset=['1d Change', '7d Change', '30d Change']),
+        column_config={
+            "#": st.column_config.NumberColumn("#", help="Original order from markets.txt", format="%d"),
+            "Ticker": st.column_config.TextColumn("Ticker", help="Market Identifier"),
+            "Value": st.column_config.NumberColumn("Price", format="%.1f%%", help="Current probability"),
+            "1d Change": st.column_config.NumberColumn("1d Δ", format="%+1.1f%%"),
+            "7d Change": st.column_config.NumberColumn("7d Δ", format="%+1.1f%%"),
+            "30d Change": st.column_config.NumberColumn("30d Δ", format="%+1.1f%%"),
+            "24h Vol": st.column_config.ProgressColumn("24h Vol", format="$%.0f", min_value=0, max_value=float(df['24h Vol'].max() if not df.empty else 100)),
+            "Total Vol": st.column_config.NumberColumn("Total Vol", format="$%.0f"),
+        },
+        height=500,
+        use_container_width=True,
+        hide_index=True
+    )
+    
+    st.markdown("---")
+    st.markdown("### Detailed Active Markets")
+
+    # 2. BOTTOM DETAILED VIEW (List of Expanders)
     # Grouping by Tab -> Category -> Event
-    # structured_data = {tab: {category: {event_id: [items]}}}
     structured_data = {}
-    
-    # Sort items based on order in markets.txt (preserved by list append order usually)
-    
     for item in all_items:
         tab = item.get('tab', 'General')
         cat = item['category']
@@ -638,78 +723,53 @@ def main():
         if cat not in structured_data[tab]: structured_data[tab][cat] = {}
         if ev_id not in structured_data[tab][cat]: structured_data[tab][cat][ev_id] = []
         
-        structured_data[tab][cat][ev_id].append(item)
+        # Limit to top N per event to keep it "highest volume" focused
+        if len(structured_data[tab][cat][ev_id]) < 5:
+            structured_data[tab][cat][ev_id].append(item)
 
-    def format_row(m, indent=False, is_header=False):
-        # Layout: Name (100), Value (8), d/d (8), w/w (8), m/m (8), Vol (10), Src (10), Upd (8)
-        col_w = 100
-        if is_header:
-            name = f"{'Concept / Market':<{col_w}}"
-            v = f"{'Value':>8}"
-            c1 = f"{'d/d':>8}"
-            c7 = f"{'w/w':>8}"
-            c30 = f"{'m/m':>8}"
-            vol = f"{'Volume':>10}"
-            upd = f"{'Update':>8}"
-            src = f"{'Src':>10}"
-            return f"  {name} {v} {c1} {c7} {c30} {vol} {upd} {src}"
-
-        name = m['name'] if not indent else m['contract']
-        if indent: 
-            name = f"  {name}"
-        
-        # Avoid hard truncation if possible, just pad
-        name_str = f"{name:<{col_w}}"
-        
-        v = f"{m['value']:>7.1f}%"
-        c1 = f"{m['change_1d']:>+7.1f}"
-        c7 = f"{m['change_7d']:>+7.1f}"
-        c30 = f"{m['change_30d']:>+7.1f}"
-        
-        vol = m['volume']
-        vol_str = f"{vol/1e6:5.1f}M" if vol >= 1e6 else f"{vol/1e3:5.0f}k" if vol >= 1e3 else f"{int(vol):>6}"
-        vol_str = f"{vol_str:>10}"
-        
-        upd = datetime.now().strftime("%H:%M")
-        upd_str = f"{upd:>8}"
-        
-        src = f"{m['source']:>10}"
-        return f"{name_str} {v} {c1} {c7} {c30} {vol_str} {upd_str} {src}"
-
-    # Draw Global Header
-    st.markdown(f"<div style='font-family: monospace; font-size: 11px; color: #888; padding: 4px 0; border-bottom: 2px solid #333; white-space: pre;'>{format_row(None, is_header=True)}</div>", unsafe_allow_html=True)
-
-    # Create Tabs for each top-level key in structured_data
-    # We want a specific order if possible, or just sorted keys
     tab_names = list(structured_data.keys())
-    # Sort tab names to ensure consistent order (General first or custom order?)
-    # Let's trust the insertion order (which follows markets.txt order roughly)
     
-    if not tab_names: return
+    def format_details_row(m):
+        col_w = 40
+        name = m['contract']
+        name_str = f"{name:<{col_w}}"
+        v = f"{m['value']:>6.1f}%"
+        src = f"{m['source']:>8}"
+        return f"{name_str} {v} {src}"
 
-    tabs = st.tabs(tab_names)
-    
-    for i, tab_name in enumerate(tab_names):
-        with tabs[i]:
-            # Each tab contains categories -> events
-            categories = structured_data[tab_name]
+    for tab_name in tab_names:
+        st.markdown(f"<div style='font-size: 16px; font-weight: bold; color: #ff9900; margin-top: 20px; border-bottom: 1px solid #444;'>{tab_name}</div>", unsafe_allow_html=True)
+        
+        categories = structured_data[tab_name]
+        for cat_name, events in categories.items():
+            if cat_name != "General":
+                st.markdown(f"<div class='bb-header' style='margin-top: 10px;'>{cat_name}</div>", unsafe_allow_html=True)
             
-            for cat_name, events in categories.items():
-                # If the Category name is "General", maybe skip header, otherwise show it
-                if cat_name != "General":
-                    st.markdown(f"<div class='bb-header'>{cat_name}</div>", unsafe_allow_html=True)
+            for ev_id, markets in events.items():
+                # We want a header for the Event if multiple markets, or just the market
+                # User wants: "just the contract name, details, and a down arrow"
+                # If there are multiple markets for one event, we should probably group them visually
+                # But creating a clean list:
                 
-                for ev_id, markets in events.items():
-                    if len(markets) > 1:
-                        first = markets[0]
-                        with st.expander(first['name'], expanded=False):
-                            for m in markets:
-                                with st.expander(format_row(m, indent=True)):
-                                    render_plotly_chart(m['id'], m['name'], m.get('history_data'))
-                    else:
-                        m = markets[0]
-                        with st.expander(format_row(m)):
+                # If event has multiple markets
+                if len(markets) > 1:
+                    st.markdown(f"<div style='margin-top:5px; color:#ccc; font-size:12px;'>{markets[0]['name']}</div>", unsafe_allow_html=True)
+                    for m in markets:
+                        # Anchor for potential linking
+                        st.markdown(f"<div id='{m['id']}'></div>", unsafe_allow_html=True)
+                        with st.expander(format_details_row(m)):
+                            st.write(f"**{m['name']}** - {m['contract']}")
                             render_plotly_chart(m['id'], m['name'], m.get('history_data'))
+                else:
+                    # Single market
+                    m = markets[0]
+                    st.markdown(f"<div id='{m['id']}'></div>", unsafe_allow_html=True)
+                    # Title is Event Name, Expander text is "Contract Details" (which mimics user request)
+                    # Or just: Name [Details]
+                    display_name = f"{m['name']} - {m['contract']}"
+                    
+                    with st.expander(display_name + f"   ({m['value']:.1f}%)"):
+                         render_plotly_chart(m['id'], m['name'], m.get('history_data'))
 
 if __name__ == "__main__":
     main()
