@@ -151,75 +151,6 @@ def apply_custom_style():
             background-color: var(--bb-row-hover) !important;
         }
 
-        .bb-cell {
-            padding: 0 4px;
-            font-size: 11px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-
-        .bb-ticker { color: var(--bb-accent); font-weight: 600; }
-        .bb-value { color: var(--bb-yellow); font-weight: 600; text-align: right; }
-        .bb-pos { color: var(--bb-pos); text-align: right; }
-        .bb-neg { color: var(--bb-neg); text-align: right; }
-        .bb-vol { color: #ff00ff; text-align: right; } /* Pinkish for volume */
-        .bb-source { color: #00ffff; font-size: 9px; }
-
-        /* Expander/Dropdown Tweak */
-        .stExpander {
-            background-color: transparent !important;
-            border: none !important;
-            margin-bottom: 0px !important;
-        }
-        .stExpander summary {
-            background-color: transparent !important;
-            color: var(--bb-text) !important;
-            padding: 2px 0 !important;
-            border-bottom: 1px solid #1a1a1a !important;
-        }
-        .stExpander summary:hover {
-            background-color: #111 !important;
-        }
-        .stExpander summary p {
-            font-family: 'Roboto Mono', monospace !important;
-            font-size: 11px !important;
-            color: inherit !important;
-            margin: 0 !important;
-            white-space: pre-wrap !important; /* Allow wrapping */
-            display: inline-block !important;
-            width: 100% !important;
-        }
-        .stExpander summary svg {
-            fill: #444 !important;
-            margin-right: 10px !important;
-        }
-        
-        .stExpander [data-testid="stExpanderDetails"] {
-            border: none !important;
-            padding: 10px 0 !important;
-        }
-        
-        /* Remove default streamlit padding */
-        [data-testid="stVerticalBlock"] > div {
-            padding-top: 0px !important;
-            padding-bottom: 0px !important;
-        }
-        
-        .stMarkdown div p {
-            margin-bottom: 0px !important;
-        }
-
-        /* Custom Arrow */
-        .bb-arrow {
-            display: inline-block;
-            margin-right: 5px;
-            font-size: 10px;
-            color: #888;
-        }
-
-        hr { border-top: 1px solid #222; margin: 2px 0 !important; }
-
         /* Custom Button Styling */
         div.stButton > button:first-child {
             background-color: transparent !important;
@@ -232,49 +163,6 @@ def apply_custom_style():
         div.stButton > button:first-child:hover {
             background-color: var(--bb-accent) !important;
             color: #000000 !important;
-        }
-
-        /* HTML Summary Table Styling */
-        .sa-summary-container {
-            width: 100%;
-            overflow-x: auto;
-            margin-bottom: 20px;
-        }
-        .sa-summary-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-family: 'Roboto Mono', monospace;
-            font-size: 11px;
-            color: var(--bb-text);
-        }
-        .sa-summary-table th {
-            text-align: left;
-            padding: 8px 4px;
-            border-bottom: 1px solid #333;
-            color: #888;
-            font-weight: normal;
-            text-transform: uppercase;
-        }
-        .sa-summary-table td {
-            padding: 6px 4px;
-            border-bottom: 1px solid #1a1a1a;
-            vertical-align: middle;
-        }
-        .sa-summary-table tr:hover {
-            background-color: #111;
-        }
-        .sa-summary-table .ticker { color: var(--bb-accent); font-weight: 600; }
-        .sa-summary-table .price { color: var(--bb-yellow); font-weight: 600; text-align: right; }
-        .sa-summary-table .change-pos { color: var(--bb-pos); font-weight: bold; text-align: right; }
-        .sa-summary-table .change-neg { color: var(--bb-neg); font-weight: bold; text-align: right; }
-        .sa-summary-table .change-neu { color: #888; text-align: right; }
-        .sa-summary-table .vol { text-align: right; }
-        .sa-summary-table .source-link { 
-            color: var(--bb-accent); 
-            text-decoration: underline !important; 
-        }
-        .sa-summary-table .source-link:hover {
-            color: #fff;
         }
         </style>
     """, unsafe_allow_html=True)
@@ -812,55 +700,55 @@ def main():
     main_summary_items = [m for m in all_items if m['tab'] != misc_tab_name]
     misc_summary_items = [m for m in all_items if m['tab'] == misc_tab_name]
 
-    st.markdown("### Market Summary")
-    
-    def render_html_summary(items):
-        if not items:
-            return
-            
-        # Non-indented HTML to avoid Markdown code block triggers
-        html = '<div class="sa-summary-container"><table class="sa-summary-table"><thead><tr>'
-        html += '<th style="width: 30px;">#</th>'
-        html += '<th style="width: 80px;">Ticker</th>'
-        html += '<th>Contract Title</th>'
-        html += '<th style="text-align: right; width: 60px;">Price</th>'
-        html += '<th style="text-align: right; width: 60px;">1d Δ</th>'
-        html += '<th style="text-align: right; width: 60px;">7d Δ</th>'
-        html += '<th style="text-align: right; width: 80px;">24h Vol</th>'
-        html += '<th style="text-align: right; width: 100px;">Total Vol</th>'
-        html += '<th style="width: 70px;">Source</th>'
-        html += '</tr></thead><tbody>'
-        
+    def prep_df_data(items):
+        data = []
         for m in items:
-            c1 = m.get('change_1d', 0)
-            c7 = m.get('change_7d', 0)
-            
-            c1_cls = "change-pos" if c1 > 0 else "change-neg" if c1 < 0 else "change-neu"
-            c7_cls = "change-pos" if c7 > 0 else "change-neg" if c7 < 0 else "change-neu"
-            
-            vol24 = m.get('volume24h', 0)
-            vol_total = m.get('volume', 0)
-            
-            html += '<tr>'
-            html += f'<td>{m.get("order", 0) + 1}</td>'
-            html += f'<td><span class="ticker">{m["id"].split("_")[-1][:10].upper()}</span></td>'
-            html += f'<td>{m["name"]} <span style="color:#666; font-size:10px;">({m["contract"]})</span></td>'
-            html += f'<td class="price">{m["value"]:.1f}%</td>'
-            html += f'<td class="{c1_cls}">{c1:+.1f}%</td>'
-            html += f'<td class="{c7_cls}">{c7:+.1f}%</td>'
-            html += f'<td class="vol">${vol24:,.0f}</td>'
-            html += f'<td class="vol">${vol_total:,.0f}</td>'
-            html += f'<td><a href="{m["url"]}" target="_blank" class="source-link">{m["source"]}</a></td>'
-            html += '</tr>'
-            
-        html += '</tbody></table></div>'
-        st.markdown(html, unsafe_allow_html=True)
+            vol24 = float(m.get('volume24h', 0))
+            vol_total = float(m.get('volume', 0))
+            data.append({
+                "#": m.get('order', 0) + 1,
+                "Ticker": m['id'].split('_')[-1][:10].upper(),
+                "Contract": m['name'],
+                "Details": m['contract'],
+                "Price": m['value'],
+                "1d Δ": m['change_1d'],
+                "7d Δ": m['change_7d'],
+                "24h Vol": vol24,
+                "Total Vol": vol_total,
+                "Source": f"{m['url']}#{m['source']}"
+            })
+        df_out = pd.DataFrame(data)
+        if not df_out.empty: df_out = df_out.sort_values("#")
+        return df_out
 
-    render_html_summary(main_summary_items)
+    df_main = prep_df_data(main_summary_items)
+    df_misc = prep_df_data(misc_summary_items)
+
+    def color_changes(val):
+        color = '#00ff66' if val > 0 else '#ff3344' if val < 0 else '#888'
+        return f'color: {color}; font-weight: bold'
+
+    def render_summary_table(target_df, height=400):
+        if target_df.empty:
+            return
+        st.dataframe(
+            target_df.style.map(color_changes, subset=['1d Δ', '7d Δ'])
+                   .format({"24h Vol": "${:,.0f}", "Total Vol": "${:,.0f}", "Price": "{:.1f}%", "1d Δ": "{:+1.1f}%", "7d Δ": "{:+1.1f}%"}),
+            column_config={
+                "#": st.column_config.NumberColumn("#", format="%d"),
+                "Source": st.column_config.LinkColumn("Source", display_text=r"#(.+)$")
+            },
+            height=height,
+            use_container_width=True,
+            hide_index=True
+        )
+
+    st.markdown("### Market Summary")
+    render_summary_table(df_main, height=450)
     
-    if misc_summary_items:
+    if not df_misc.empty:
         st.markdown(f"### {misc_tab_name}")
-        render_html_summary(misc_summary_items)
+        render_summary_table(df_misc, height=250)
     
     st.markdown("---")
     st.markdown("### Detailed Active Markets")
