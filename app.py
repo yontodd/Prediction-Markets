@@ -700,7 +700,7 @@ def main():
             "1d Change": st.column_config.NumberColumn("1d Δ", format="%+1.1f%%"),
             "7d Change": st.column_config.NumberColumn("7d Δ", format="%+1.1f%%"),
             "30d Change": st.column_config.NumberColumn("30d Δ", format="%+1.1f%%"),
-            "24h Vol": st.column_config.ProgressColumn("24h Vol", format="$%.0f", min_value=0, max_value=float(df['24h Vol'].max() if not df.empty else 100)),
+            "24h Vol": st.column_config.ProgressColumn("24h Vol", format="$%.0f", min_value=0, max_value=float(max(df['24h Vol'].max(), 1) if not df.empty else 100)),
             "Total Vol": st.column_config.NumberColumn("Total Vol", format="$%.0f"),
         },
         height=500,
