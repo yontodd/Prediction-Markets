@@ -438,11 +438,15 @@ def fetch_kalshi_data(url):
             # Priority 1: Subtitle (contains the specific differentiation like "Before 2025")
             contract_name = m.get('subtitle')
             
-            # Priority 2: Title (if subtitle is missing)
+            # Priority 2: Yes/No Subtitle (MVP/Player markets often hide names here)
+            if not contract_name:
+                contract_name = m.get('yes_sub_title') or m.get('no_sub_title')
+            
+            # Priority 3: Title (if all above missing)
             if not contract_name:
                 contract_name = m.get('title')
             
-            # Priority 3: Ticker Parsing (if name is generic/redundant)
+            # Priority 4: Ticker Parsing (if name is generic/redundant)
             # Check if name is same as event title or contains generic "Winner?" text
             is_generic = (contract_name == base_title) or ('Winner?' in str(contract_name)) or (not contract_name)
             
@@ -777,7 +781,7 @@ def main():
         if ev_id not in structured_data[tab][cat]: structured_data[tab][cat][ev_id] = []
         
         # Limit to top N per event to keep it "highest volume" focused
-        if len(structured_data[tab][cat][ev_id]) < 5:
+        if len(structured_data[tab][cat][ev_id]) < 3:
             structured_data[tab][cat][ev_id].append(item)
 
     tab_names = list(structured_data.keys())
