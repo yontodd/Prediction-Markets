@@ -812,7 +812,8 @@ def main():
             return
             
         st.dataframe(
-            target_df.style.map(color_changes, subset=['1d Change', '7d Change', '30d Change']),
+            target_df.style.map(color_changes, subset=['1d Change', '7d Change', '30d Change'])
+                   .format({"24h Vol": "${:,.0f}", "Total Vol": "${:,.0f}"}),
             column_config={
                 "#": st.column_config.NumberColumn("#", help="Original order from markets.txt", format="%d"),
                 "Ticker": st.column_config.TextColumn("Ticker", help="Market Identifier"),
@@ -820,8 +821,8 @@ def main():
                 "1d Change": st.column_config.NumberColumn("1d Δ", format="%+1.1f%%"),
                 "7d Change": st.column_config.NumberColumn("7d Δ", format="%+1.1f%%"),
                 "30d Change": st.column_config.NumberColumn("30d Δ", format="%+1.1f%%"),
-                "24h Vol": st.column_config.NumberColumn("24h Vol", format="$%,.0f"),
-                "Total Vol": st.column_config.NumberColumn("Total Vol", format="$%,.0f"),
+                "24h Vol": st.column_config.NumberColumn("24h Vol"),
+                "Total Vol": st.column_config.NumberColumn("Total Vol"),
                 "Source": st.column_config.LinkColumn("Source", display_text=r"#(.+)$")
             },
             height=height,
