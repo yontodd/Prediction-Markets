@@ -1,46 +1,36 @@
-# Prediction Market Dashboard (Bloomberg Style)
+# Prediction Markets Dashboard Documentation
 
-A premium, Streamlit-based dashboard for tracking prediction markets from Polymarket and Kalshi, inspired by the Bloomberg PREDICT function.
+## Overview
+This application aggregates live contract data from **Kalshi** and **Polymarket** into a unified, high-performance dashboard. It features a sortable market summary table, active market filtering, and detailed historical price charts.
 
-## Features
-- **Bloomberg Aesthetic**: High-contrast dark mode with signature yellow/purple headers and monospace typography.
-- **Multi-Platform Support**: Fetch real-time data from Polymarket and Kalshi.
-- **Dynamic Tracking**: Input URLs of specific contracts or events in a simple text file.
-- **Category Grouping**: Group markets into logical categories and subcategories using bracket notation.
-- **Real-time Price History**: Local persistence of prices to calculate 1D and 5D net changes.
-- **Range Bars**: Visualized low/high ranges for market sentiment.
+## Usage
+Add URLs to `markets.txt` to track specific markets. The app automatically determines the platform and event details.
+Grouping is determined by `[Headers]` in the text file.
 
-## Setup
+## Data Methodology
 
-1. **Install Dependencies**:
-   ```bash
-   pip install -r requirements.txt
-   ```
+### Status & Filtering
+*   **Kalshi**: Retains markets with status `active` or `open`. Expired markets (where `close_time` < Now) are automatically filtered out.
+*   **Polymarket**: Retains markets where `active` is True and `closed` is False.
+*   **Volume Thresholds**:
+    *   **Kalshi**: Minimum total volume > 500.
+    *   **Polymarket**: Minimum total volume > 10,000 OR 24h volume > 100.
 
-2. **Configure Markets**:
-   Edit `markets.txt` to add your own categories and URLs. Use the following format:
-   ```text
-   [Main Category]
-   [Subcategory]
-   https://polymarket.com/event/slug
-   https://kalshi.com/markets/ticker
-   ```
+### Price Change Calculations (1d, 7d, 30d)
+Changes are calculated as a simple difference: `Current Price - Reference Price`.
 
-3. **Run the Dashboard**:
-   ```bash
-   streamlit run app.py
-   ```
+*   **Reference Time**: Calculations use a rolling window relative to the current moment (Now - 24 hours, Now - 7 days, etc.).
+*   **Reference Price**: The last available price point *recorded before* that rolling timestamp.
+    *   **Polymarket**: Uses **Hourly Resolution**. The change is a true **Rolling 24h Delta** (Current vs Price ~24h ago).
+    *   **Kalshi**: Uses **Daily Resolution** (due to API constraints). The change is typically **Current vs Prev Daily Close** (Current vs. Close Price of the previous day's candle).
 
-## Kalshi API Keys
-If you encounter connection issues or hit rate limits with Kalshi, you can provide your API keys by creating a `.env` file:
-```env
-KALSHI_API_KEY_ID=your_id
-KALSHI_API_KEY=your_key
+### Data Normalization
+*   **Prices**: All prices are normalized to a **0-100%** probability scale. Kalshi prices (often 1-99 cents) are treated as percentages.
+*   **Titles**:
+    *   **Kalshi**: Prioritizes the `subtitle` (e.g., "Before 2025") for distinctness. Falls back to parsing the `ticker` suffix (e.g., "SEA" from "...-SEA") if titles are generic.
+    *   **Polymarket**: Uses the market question or group item title.
+
+## Running the App
+```bash
+streamlit run app.py
 ```
-The application will automatically use these if available.
-
-## Project Structure
-- `app.py`: Main Streamlit application and data fetching logic.
-- `markets.txt`: User-configurable list of markets to track.
-- `price_history.json`: Local cache for price changes (auto-generated).
-- `requirements.txt`: Python dependencies.
