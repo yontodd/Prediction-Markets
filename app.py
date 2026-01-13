@@ -219,6 +219,20 @@ def apply_custom_style():
         }
 
         hr { border-top: 1px solid #222; margin: 2px 0 !important; }
+
+        /* Custom Button Styling */
+        div.stButton > button:first-child {
+            background-color: transparent !important;
+            color: var(--bb-accent) !important;
+            border: 1px solid var(--bb-accent) !important;
+            border-radius: 4px !important;
+            font-size: 13px !important;
+            font-weight: bold !important;
+        }
+        div.stButton > button:first-child:hover {
+            background-color: var(--bb-accent) !important;
+            color: #000000 !important;
+        }
         </style>
     """, unsafe_allow_html=True)
 
