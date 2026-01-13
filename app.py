@@ -418,16 +418,52 @@ def fetch_kalshi_data(url):
             close_time_str = m.get('close_time')
             if close_time_str:
                 try:
-                    close_ts = datetime.fromisoformat(close_time_str.replace('Z', '+00:00')).timestamp()
+                    # Fix for potential isoformat errors with variable precision
+                    if '.' in close_time_str:
+                        # Truncate micros/nanos if necessary or just handle Z
+                        base_ts = close_time_str.split('Z')[0] 
+                        # Python < 3.11 fromisoformat is picky, might need simple strptime if standard format
+                        # Attempt standard replacement
+                        close_ts = datetime.fromisoformat(base_ts).timestamp()
+                    else:
+                        close_ts = datetime.fromisoformat(close_time_str.replace('Z', '+00:00')).timestamp()
+                        
                     if close_ts < now_ts: continue
                 except: pass
+
+            m_ticker = m.get('ticker')
+            if not m_ticker: continue
+
+            # Determine Contract Name
+            # If title is generic (same as event) and subtitle missing, try ticker suffix
+            contract_name = m.get('title', m.get('subtitle', ''))
+            
+            # Heuristic: If contract name matches event title exactly, it's likely generic.
+            # Or if it contains 'Winner?' which is common in questions
+            if contract_name == base_title or 'Winner?' in contract_name or not contract_name:
+                # Try to parse from ticker: KXNFLNFCCHAMP-25-SEA -> SEA
+                # Split by dash, take last part if it looks like an acronym or name
+                parts = m_ticker.split('-')
+                if len(parts) > 1:
+                    suffix = parts[-1]
+                    # Map common suffixes to names if possible, or just use suffix
+                    contract_name = suffix
+            
+            # Additional Ticker mapping for known NFL codes (optional but helpful)
+            nfl_map = {
+                'SEA': 'Seattle Seahawks', 'SF': 'San Francisco 49ers', 
+                'CHI': 'Chicago Bears', 'LA': 'Los Angeles Rams', 
+                'GB': 'Green Bay Packers', 'MIN': 'Minnesota Vikings',
+                'DET': 'Detroit Lions', 'PHI': 'Philadelphia Eagles',
+                'DAL': 'Dallas Cowboys', 'NYG': 'New York Giants',
+                'WAS': 'Washington Commanders'
+            }
+            if contract_name in nfl_map:
+                contract_name = nfl_map[contract_name]
 
             # Kalshi provides price in cents (1-99)
             val_raw = m.get('last_price', 0)
             val = float(val_raw)
-
-            m_ticker = m.get('ticker')
-            if not m_ticker: continue
             
             # Use series_ticker if available, else fallback
             series_ticker = m.get('series_ticker') or data.get('event', {}).get('series_ticker') or m.get('event_ticker') or event_ticker
@@ -465,7 +501,7 @@ def fetch_kalshi_data(url):
                 "id": marker_id,
                 "event_id": f"kalshi_ev_{event_ticker}",
                 "name": event_title,
-                "contract": m.get('title', m.get('subtitle', '')),
+                "contract": contract_name,
                 "value": val,
                 "change_1d": c1d,
                 "change_7d": c7d,
