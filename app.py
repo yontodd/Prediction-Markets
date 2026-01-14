@@ -719,7 +719,7 @@ def main():
         color = '#00ff66' if val > 0 else '#ff3344' if val < 0 else '#888'
         return f'color: {color}; font-weight: bold'
 
-    def render_summary_table(target_df, height=None):
+    def render_summary_table(target_df):
         if target_df.empty:
             return
         st.dataframe(
@@ -729,7 +729,6 @@ def main():
                 "#": st.column_config.NumberColumn("#", format="%d"),
                 "Source": st.column_config.LinkColumn("Source", display_text=r"#(.+)$")
             },
-            height=height,
             use_container_width=True,
             hide_index=True
         )
@@ -741,14 +740,12 @@ def main():
     
     for tab in display_tabs:
         # Filter items for this tab
-        # Note: If 'Etc.' captures everything else, verify logic.
-        # But based on markets.txt having [Etc.], it should be explicit.
         tab_items = [m for m in all_items if m['tab'] == tab]
         
         if tab_items:
             st.markdown(f"#### {tab}")
             df_tab = prep_df_data(tab_items)
-            render_summary_table(df_tab, height=None) # Auto height based on rows
+            render_summary_table(df_tab)
 
     
     st.markdown("---")
