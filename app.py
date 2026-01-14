@@ -243,10 +243,8 @@ def parse_markets_file():
     current_tab = "General"
     current_category = "General"
     
-    # Define known "Top Level" tabs to distinguish from subcategories
-    # Or simply: Any header that is followed by another header is a Tab?
-    # Better: explicit list based on user input
-    known_tabs = ["Finance/Economics", "Business", "News", "Military/Geopolitics", "Sports/Entertainment/Culture/Misc."]
+    # Define known "Top Level" tabs
+    known_tabs = ["Finance/Economics", "News", "Etc."]
     
     if not os.path.exists("markets.txt"):
         return []
@@ -695,11 +693,6 @@ def main():
     # Sort all_items by original order from markets.txt -> then by Price (Value) descending
     all_items.sort(key=lambda x: (x.get('order', 0), -x.get('value', 0)))
 
-    # Separate Misc items from Main items for the summary tables
-    misc_tab_name = "Sports/Entertainment/Culture/Misc."
-    main_summary_items = [m for m in all_items if m['tab'] != misc_tab_name]
-    misc_summary_items = [m for m in all_items if m['tab'] == misc_tab_name]
-
     def prep_df_data(items):
         data = []
         for m in items:
@@ -715,20 +708,18 @@ def main():
                 "7d Δ": m['change_7d'],
                 "24h Vol": vol24,
                 "Total Vol": vol_total,
-                "Source": f"{m['url']}#{m['source']}"
+                "Source": f"{m['url']}#{m['source']}",
+                "Copy": f"{m['contract']}: {m['value']:.0f}% ({m['change_1d']:+.0f}%) - [link]({m['url']})"
             })
         df_out = pd.DataFrame(data)
         if not df_out.empty: df_out = df_out.sort_values("#")
         return df_out
 
-    df_main = prep_df_data(main_summary_items)
-    df_misc = prep_df_data(misc_summary_items)
-
     def color_changes(val):
         color = '#00ff66' if val > 0 else '#ff3344' if val < 0 else '#888'
         return f'color: {color}; font-weight: bold'
 
-    def render_summary_table(target_df, height=400):
+    def render_summary_table(target_df, height=None):
         if target_df.empty:
             return
         st.dataframe(
@@ -743,12 +734,22 @@ def main():
             hide_index=True
         )
 
-    st.markdown("### Market Summary")
-    render_summary_table(df_main, height=450)
+    # Render Tables for each Tab
+    display_tabs = ["Finance/Economics", "News", "Etc."]
     
-    if not df_misc.empty:
-        st.markdown(f"### {misc_tab_name}")
-        render_summary_table(df_misc, height=250)
+    st.markdown("### Market Summary")
+    
+    for tab in display_tabs:
+        # Filter items for this tab
+        # Note: If 'Etc.' captures everything else, verify logic.
+        # But based on markets.txt having [Etc.], it should be explicit.
+        tab_items = [m for m in all_items if m['tab'] == tab]
+        
+        if tab_items:
+            st.markdown(f"#### {tab}")
+            df_tab = prep_df_data(tab_items)
+            render_summary_table(df_tab, height=None) # Auto height based on rows
+
     
     st.markdown("---")
     st.markdown("### Detailed Active Markets")
