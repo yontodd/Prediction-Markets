@@ -692,20 +692,24 @@ def main():
     all_items.sort(key=lambda x: (x.get('order', 0), -x.get('value', 0)))
 
     def prep_df_data(items):
+        def fmt_vol(v):
+            if v >= 1_000_000: return f"${v/1_000_000:.1f}M"
+            if v >= 1_000: return f"${v/1_000:.1f}k"
+            return f"${v:.0f}"
+
         data = []
         for m in items:
             vol24 = float(m.get('volume24h', 0))
             vol_total = float(m.get('volume', 0))
             data.append({
                 "#": m.get('order', 0) + 1,
-                "Ticker": m['id'].split('_')[-1][:10].upper(),
-                "Contract": m['name'],
+                "Event": m['name'],
                 "Details": m['contract'],
                 "Price": m['value'],
                 "1d Δ": m['change_1d'],
                 "7d Δ": m['change_7d'],
-                "24h Vol": vol24,
-                "Total Vol": vol_total,
+                "24h Vol": fmt_vol(vol24),
+                "Total Vol": fmt_vol(vol_total),
                 "Source": f"{m['url']}#{m['source']}",
                 "Copy": f"{m['name']} - {m['contract']}: {m['value']:.0f}% ({m['change_1d']:+.0f}%) - [link]({m['url']})"
             })
@@ -719,105 +723,20 @@ def main():
 
     def render_summary_table(target_df):
         if target_df.empty: return
-        
-        def fmt_vol(v):
-            if v >= 1_000_000: return f"${v/1_000_000:.1f}M"
-            if v >= 1_000: return f"${v/1_000:.1f}k"
-            return f"${v:.0f}"
 
-        rows = ""
-        for _, row in target_df.iterrows():
-            # Parse Source
-            src_raw = row['Source']
-            if '#' in src_raw:
-                url, label = src_raw.split('#', 1)
-            else:
-                url, label = src_raw, "Link"
-            
-            # Colors
-            c1d = row['1d Δ']
-            c7d = row['7d Δ']
-            col1 = "#00ff66" if c1d > 0 else "#ff3344" if c1d < 0 else "#888"
-            col7 = "#00ff66" if c7d > 0 else "#ff3344" if c7d < 0 else "#888"
-            
-            # Copy Text
-            copy_txt = row['Copy'].replace("'", "\\'").replace('"', '&quot;')
-            
-            # Vols
-            v24 = fmt_vol(row['24h Vol'])
-            vtot = fmt_vol(row['Total Vol'])
-
-            rows += f"""
-            <tr class="bb-row">
-                <td style="color: #888">{row['#']}</td>
-                <td style="color: #ff9900">{row['Ticker']}</td>
-                <td>{row['Contract']}</td>
-                <td style="color: #bbbbbb">{row['Details']}</td>
-                <td style="color: #ffff00">{row['Price']:.1f}%</td>
-                <td style="color: {col1}">{c1d:+.1f}%</td>
-                <td style="color: {col7}">{c7d:+.1f}%</td>
-                <td>{v24}</td>
-                <td>{vtot}</td>
-                <td><a href="{url}" target="_blank" style="color: #fff; text-decoration: underline;">{label}</a></td>
-                <td style="text-align: center; cursor: pointer;" onclick="copyText('{copy_txt}', this)">📋</td>
-            </tr>
-            """
-        
-        html = f"""
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
-            <style>
-                body {{ background-color: #000000; color: #ffffff; font-family: 'Roboto Mono', monospace; font-size: 13px; margin: 0; padding: 0; }}
-                table {{ width: 100%; border-collapse: collapse; }}
-                th {{ text-align: left; color: #888; border-bottom: 2px solid #555; padding: 6px 4px; font-weight: normal; font-size: 12px; }}
-                td {{ border-bottom: 1px solid #333; padding: 6px 4px; vertical-align: middle; }}
-                .bb-row:hover {{ background-color: #1a1a1a; }}
-                a {{ text-decoration: none; }}
-                a:hover {{ color: #ff9900; }}
-                /* Tooltip container */
-                td a {{ position: relative; }}
-            </style>
-            <script>
-                function copyText(text, el) {{
-                    navigator.clipboard.writeText(text).then(() => {{
-                        el.innerText = "✅";
-                        setTimeout(() => {{ el.innerText = "📋"; }}, 1500);
-                    }}).catch(err => {{
-                        console.error('Failed to copy', err);
-                    }});
-                }}
-            </script>
-        </head>
-        <body>
-            <table>
-                <thead>
-                    <tr>
-                        <th style="width: 30px">#</th>
-                        <th style="width: 70px">TICKER</th>
-                        <th>EVENT</th>
-                        <th>DETAILS</th>
-                        <th style="width: 50px">PRICE</th>
-                        <th style="width: 50px">1D Δ</th>
-                        <th style="width: 50px">7D Δ</th>
-                        <th style="width: 60px">24H VOL</th>
-                        <th style="width: 60px">TOT VOL</th>
-                        <th style="width: 60px">SOURCE</th>
-                        <th style="width: 40px; text-align: center;">COPY</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {rows}
-                </tbody>
-            </table>
-        </body>
-        </html>
-        """
-        
-        # Calculate Height
-        height = 35 + (len(target_df) * 33)
-        components.html(html, height=height, scrolling=True)
+        st.dataframe(
+            target_df.style.map(color_changes, subset=['1d Δ', '7d Δ'])
+                   .format({"Price": "{:.1f}%", "1d Δ": "{:+1.1f}%", "7d Δ": "{:+1.1f}%"}),
+            column_config={
+                "#": st.column_config.NumberColumn("#", format="%d"),
+                "Source": st.column_config.LinkColumn("Source", display_text=r"#(.+)$"),
+                "Event": st.column_config.TextColumn("Event"),
+                "Details": st.column_config.TextColumn("Details"),
+                "Copy": st.column_config.TextColumn("Copy", width="medium")
+            },
+            use_container_width=True,
+            hide_index=True
+        )
 
     # Render Tables for each Tab
     display_tabs = ["Finance/Economics", "News", "Etc."]
