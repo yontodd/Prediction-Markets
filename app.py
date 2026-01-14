@@ -13,6 +13,7 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.hazmat.primitives import serialization
 from concurrent.futures import ThreadPoolExecutor, as_completed
+import streamlit.components.v1 as components
 
 # Load environment variables
 load_dotenv()
@@ -681,9 +682,9 @@ def main():
     filtered_items = []
     for eid, markets in event_groups.items():
         if len(markets) >= 6:
-            # Sort by value descending and take top 3
+            # Sort by value descending and take top 2
             markets.sort(key=lambda x: -x.get('value', 0))
-            filtered_items.extend(markets[:3])
+            filtered_items.extend(markets[:2])
         else:
             filtered_items.extend(markets)
     
@@ -720,18 +721,93 @@ def main():
         return f'color: {color}; font-weight: bold'
 
     def render_summary_table(target_df):
-        if target_df.empty:
-            return
-        st.dataframe(
-            target_df.style.map(color_changes, subset=['1d Δ', '7d Δ'])
-                   .format({"24h Vol": "${:,.0f}", "Total Vol": "${:,.0f}", "Price": "{:.1f}%", "1d Δ": "{:+1.1f}%", "7d Δ": "{:+1.1f}%"}),
-            column_config={
-                "#": st.column_config.NumberColumn("#", format="%d"),
-                "Source": st.column_config.LinkColumn("Source", display_text=r"#(.+)$")
-            },
-            use_container_width=True,
-            hide_index=True
-        )
+        if target_df.empty: return
+        
+        rows = ""
+        for _, row in target_df.iterrows():
+            # Parse Source
+            src_raw = row['Source']
+            if '#' in src_raw:
+                url, label = src_raw.split('#', 1)
+            else:
+                url, label = src_raw, "Link"
+            
+            # Colors
+            c1d = row['1d Δ']
+            c7d = row['7d Δ']
+            col1 = "#00ff66" if c1d > 0 else "#ff3344" if c1d < 0 else "#888"
+            col7 = "#00ff66" if c7d > 0 else "#ff3344" if c7d < 0 else "#888"
+            
+            # Copy Text (escape for JS)
+            copy_txt = row['Copy'].replace("'", "\\'").replace('"', '&quot;')
+
+            rows += f"""
+            <tr class="bb-row">
+                <td style="color: #888">{row['#']}</td>
+                <td style="color: #ff9900">{row['Ticker']}</td>
+                <td>{row['Contract']}</td>
+                <td style="color: #ffff00">{row['Price']:.1f}%</td>
+                <td style="color: {col1}">{c1d:+.1f}%</td>
+                <td style="color: {col7}">{c7d:+.1f}%</td>
+                <td>${row['24h Vol']:,.0f}</td>
+                <td>${row['Total Vol']:,.0f}</td>
+                <td><a href="{url}" target="_blank" style="color: #fff; text-decoration: underline;">{label}</a></td>
+                <td style="text-align: center; cursor: pointer;" onclick="copyText('{copy_txt}', this)">📋</td>
+            </tr>
+            """
+        
+        html = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
+            <style>
+                body {{ background-color: #000000; color: #ffffff; font-family: 'Roboto Mono', monospace; font-size: 13px; margin: 0; padding: 0; }}
+                table {{ width: 100%; border-collapse: collapse; }}
+                th {{ text-align: left; color: #888; border-bottom: 2px solid #555; padding: 6px 4px; font-weight: normal; font-size: 12px; }}
+                td {{ border-bottom: 1px solid #333; padding: 6px 4px; vertical-align: middle; }}
+                .bb-row:hover {{ background-color: #1a1a1a; }}
+                a {{ text-decoration: none; }}
+                a:hover {{ color: #ff9900; }}
+            </style>
+            <script>
+                function copyText(text, el) {{
+                    navigator.clipboard.writeText(text).then(() => {{
+                        el.innerText = "✅";
+                        setTimeout(() => {{ el.innerText = "📋"; }}, 1500);
+                    }}).catch(err => {{
+                        console.error('Failed to copy', err);
+                    }});
+                }}
+            </script>
+        </head>
+        <body>
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 30px">#</th>
+                        <th style="width: 80px">TICKER</th>
+                        <th>CONTRACT</th>
+                        <th style="width: 60px">PRICE</th>
+                        <th style="width: 60px">1D Δ</th>
+                        <th style="width: 60px">7D Δ</th>
+                        <th style="width: 80px">24H VOL</th>
+                        <th style="width: 80px">TOT VOL</th>
+                        <th style="width: 80px">SOURCE</th>
+                        <th style="width: 40px; text-align: center;">COPY</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {rows}
+                </tbody>
+            </table>
+        </body>
+        </html>
+        """
+        
+        # Calculate Height: Header (35) + (Rows * 33) + Buffer
+        height = 35 + (len(target_df) * 33)
+        components.html(html, height=height, scrolling=True)
 
     # Render Tables for each Tab
     display_tabs = ["Finance/Economics", "News", "Etc."]
