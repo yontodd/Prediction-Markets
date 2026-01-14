@@ -681,12 +681,9 @@ def main():
     
     filtered_items = []
     for eid, markets in event_groups.items():
-        if len(markets) >= 6:
-            # Sort by value descending and take top 2
-            markets.sort(key=lambda x: -x.get('value', 0))
-            filtered_items.extend(markets[:2])
-        else:
-            filtered_items.extend(markets)
+        # Sort by value descending and take top 2
+        markets.sort(key=lambda x: -x.get('value', 0))
+        filtered_items.extend(markets[:2])
     
     # Replace all_items with filtered version
     all_items = filtered_items
