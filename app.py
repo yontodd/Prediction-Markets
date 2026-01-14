@@ -749,7 +749,7 @@ def main():
 
             rows += f"""
             <tr class="bb-row">
-                <td style="color: #888"><a href="{url}" target="_blank" style="color: #888; text-decoration: none;">{row['#']}</a></td>
+                <td style="color: #888">{row['#']}</td>
                 <td style="color: #ff9900">{row['Ticker']}</td>
                 <td>{row['Contract']}</td>
                 <td style="color: #bbbbbb">{row['Details']}</td>
@@ -758,6 +758,7 @@ def main():
                 <td style="color: {col7}">{c7d:+.1f}%</td>
                 <td>{v24}</td>
                 <td>{vtot}</td>
+                <td><a href="{url}" target="_blank" style="color: #fff; text-decoration: underline;">{label}</a></td>
                 <td style="text-align: center; cursor: pointer;" onclick="copyText('{copy_txt}', this)">📋</td>
             </tr>
             """
@@ -802,6 +803,7 @@ def main():
                         <th style="width: 50px">7D Δ</th>
                         <th style="width: 60px">24H VOL</th>
                         <th style="width: 60px">TOT VOL</th>
+                        <th style="width: 60px">SOURCE</th>
                         <th style="width: 40px; text-align: center;">COPY</th>
                     </tr>
                 </thead>
