@@ -710,7 +710,7 @@ def main():
                 "24h Vol": vol24,
                 "Total Vol": vol_total,
                 "Source": f"{m['url']}#{m['source']}",
-                "Copy": f"{m['contract']}: {m['value']:.0f}% ({m['change_1d']:+.0f}%) - [link]({m['url']})"
+                "Copy": f"{m['name']} - {m['contract']}: {m['value']:.0f}% ({m['change_1d']:+.0f}%) - [link]({m['url']})"
             })
         df_out = pd.DataFrame(data)
         if not df_out.empty: df_out = df_out.sort_values("#")
