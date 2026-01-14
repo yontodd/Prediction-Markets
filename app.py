@@ -723,6 +723,11 @@ def main():
     def render_summary_table(target_df):
         if target_df.empty: return
         
+        def fmt_vol(v):
+            if v >= 1_000_000: return f"${v/1_000_000:.1f}M"
+            if v >= 1_000: return f"${v/1_000:.1f}k"
+            return f"${v:.0f}"
+
         rows = ""
         for _, row in target_df.iterrows():
             # Parse Source
@@ -738,20 +743,24 @@ def main():
             col1 = "#00ff66" if c1d > 0 else "#ff3344" if c1d < 0 else "#888"
             col7 = "#00ff66" if c7d > 0 else "#ff3344" if c7d < 0 else "#888"
             
-            # Copy Text (escape for JS)
+            # Copy Text
             copy_txt = row['Copy'].replace("'", "\\'").replace('"', '&quot;')
+            
+            # Vols
+            v24 = fmt_vol(row['24h Vol'])
+            vtot = fmt_vol(row['Total Vol'])
 
             rows += f"""
             <tr class="bb-row">
-                <td style="color: #888">{row['#']}</td>
+                <td style="color: #888"><a href="{url}" target="_blank" style="color: #888; text-decoration: none;">{row['#']}</a></td>
                 <td style="color: #ff9900">{row['Ticker']}</td>
                 <td>{row['Contract']}</td>
+                <td style="color: #bbbbbb">{row['Details']}</td>
                 <td style="color: #ffff00">{row['Price']:.1f}%</td>
                 <td style="color: {col1}">{c1d:+.1f}%</td>
                 <td style="color: {col7}">{c7d:+.1f}%</td>
-                <td>${row['24h Vol']:,.0f}</td>
-                <td>${row['Total Vol']:,.0f}</td>
-                <td><a href="{url}" target="_blank" style="color: #fff; text-decoration: underline;">{label}</a></td>
+                <td>{v24}</td>
+                <td>{vtot}</td>
                 <td style="text-align: center; cursor: pointer;" onclick="copyText('{copy_txt}', this)">📋</td>
             </tr>
             """
@@ -769,6 +778,8 @@ def main():
                 .bb-row:hover {{ background-color: #1a1a1a; }}
                 a {{ text-decoration: none; }}
                 a:hover {{ color: #ff9900; }}
+                /* Tooltip container */
+                td a {{ position: relative; }}
             </style>
             <script>
                 function copyText(text, el) {{
@@ -786,14 +797,14 @@ def main():
                 <thead>
                     <tr>
                         <th style="width: 30px">#</th>
-                        <th style="width: 80px">TICKER</th>
-                        <th>CONTRACT</th>
-                        <th style="width: 60px">PRICE</th>
-                        <th style="width: 60px">1D Δ</th>
-                        <th style="width: 60px">7D Δ</th>
-                        <th style="width: 80px">24H VOL</th>
-                        <th style="width: 80px">TOT VOL</th>
-                        <th style="width: 80px">SOURCE</th>
+                        <th style="width: 70px">TICKER</th>
+                        <th>EVENT</th>
+                        <th>DETAILS</th>
+                        <th style="width: 50px">PRICE</th>
+                        <th style="width: 50px">1D Δ</th>
+                        <th style="width: 50px">7D Δ</th>
+                        <th style="width: 60px">24H VOL</th>
+                        <th style="width: 60px">TOT VOL</th>
                         <th style="width: 40px; text-align: center;">COPY</th>
                     </tr>
                 </thead>
@@ -805,7 +816,7 @@ def main():
         </html>
         """
         
-        # Calculate Height: Header (35) + (Rows * 33) + Buffer
+        # Calculate Height
         height = 35 + (len(target_df) * 33)
         components.html(html, height=height, scrolling=True)
 
