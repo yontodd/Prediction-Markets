@@ -28,8 +28,13 @@ https://kalshi.com/markets/controlh/house-winner/controlh-2026
 [Military/Geopolitics]
 https://polymarket.com/event/us-strikes-iran-by
 https://kalshi.com/markets/kxvenezuelaleader/who-will-be-the-head-of-state-of-venezuela-on-date/kxvenezuelaleader-26dec31
+https://polymarket.com/event/another-us-strike-on-venezuela-by
+https://polymarket.com/event/us-strike-on-mexico-by?tid=1767793976825
+https://polymarket.com/event/us-strike-on-cuba-by?tid=1767714495634
 https://polymarket.com/event/us-strike-on-colombia-by-january-31?tid=1767794247321
 https://kalshi.com/markets/kxgreenterritory/greenland-acquisition/kxgreenterritory-29
+https://polymarket.com/event/will-trump-acquire-greenland-before-2027?tid=1767887361869
+https://polymarket.com/event/will-the-us-invade-greenland-in-2026?tid=1767893937789
 https://kalshi.com/markets/kxcanal/panama-canal-retaken/kxcanal-29
 https://polymarket.com/event/khamenei-out-as-supreme-leader-of-iran-by-june-30-747
 https://polymarket.com/event/will-china-invade-taiwan-before-2027?tid=1767030127053
