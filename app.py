@@ -494,7 +494,7 @@ def fetch_polymarket_data(url):
         
         # Volume filter
         volume_main = float(data.get('volume', 0))
-        volume24h_main = float(data.get('volume24h', data.get('volume_24h', 0)))
+        volume24h_main = float(data.get('volume24h', data.get('volume_24h', data.get('volume24hr', 0))))
         
         results = []
         for m in markets_data:
@@ -538,7 +538,7 @@ def fetch_polymarket_data(url):
             # Volume filter
             volume = float(m.get('volume', 0))
             # Fallback to event-level 24h volume if market-level is missing/0
-            volume24h = float(m.get('volume24h', m.get('volume_24h', 0)))
+            volume24h = float(m.get('volume24h', m.get('volume_24h', m.get('volume24hr', 0))))
             if volume24h == 0:
                 volume24h = volume24h_main
 
