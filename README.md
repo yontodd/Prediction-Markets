@@ -22,7 +22,7 @@ Changes are calculated as a simple difference: `Current Price - Reference Price`
 *   **Reference Time**: Calculations use a rolling window relative to the current moment (Now - 24 hours, Now - 7 days, etc.).
 *   **Reference Price**: The last available price point *recorded before* that rolling timestamp.
     *   **Polymarket**: Uses **Hourly Resolution**. The change is a true **Rolling 24h Delta** (Current vs Price ~24h ago).
-    *   **Kalshi**: Uses **Daily Resolution** (due to API constraints). The change is typically **Current vs Prev Daily Close** (Current vs. Close Price of the previous day's candle).
+    *   **Kalshi**: Uses **Hourly Resolution**. The change is a true **Rolling 24h Delta** (Current vs Price ~24h ago), derived from a 45-day history window to ensure granular data availability.
 
 ### Data Normalization
 *   **Prices**: All prices are normalized to a **0-100%** probability scale. Kalshi prices (often 1-99 cents) are treated as percentages.
