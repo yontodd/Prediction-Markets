@@ -427,8 +427,11 @@ def fetch_kalshi_data(url):
             # Fetch History (pruned for performance)
             try:
                 now = int(time.time())
-                start_1y = now - (365 * 24 * 3600)
-                hist_url = f"https://{target_domain}/trade-api/v2/series/{series_ticker}/markets/{m_ticker}/candlesticks?period_interval=1440&start_ts={start_1y}&end_ts={now}"
+                now = int(time.time())
+                # Limit history to 45 days to ensure we get hourly resolution without hitting API limits
+                # This ensures we get the specific candle from 24h ago for true rolling change
+                start_win = now - (45 * 24 * 3600)
+                hist_url = f"https://{target_domain}/trade-api/v2/series/{series_ticker}/markets/{m_ticker}/candlesticks?period_interval=60&start_ts={start_win}&end_ts={now}"
                 h_resp = session.get(hist_url, headers=headers, timeout=5)
                 if h_resp.status_code == 200:
                     for c in h_resp.json().get('candlesticks', []):
@@ -728,7 +731,6 @@ def main():
                 "24h Vol": fmt_vol(vol24),
                 "Total Vol": fmt_vol(vol_total),
                 "Source": f"{m['url']}#{m['source']}",
-                "Copy": f"{m['name']} - {m['contract']}: {m['value']:.0f}% ({m['change_1d']:+.0f}%) - [link]({m['url']})",
                 "RawURL": m['url']
             })
         df_out = pd.DataFrame(data)
@@ -748,7 +750,6 @@ def main():
             "Source": st.column_config.LinkColumn("Source", display_text=r"#(.+)$"),
             "Event": st.column_config.TextColumn("Event"),
             "Details": st.column_config.TextColumn("Details"),
-            "Copy": st.column_config.TextColumn("Copy", width="medium"),
             "RawURL": None
         }
 
