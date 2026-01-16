@@ -639,10 +639,19 @@ def main():
         with rc1:
             if st.button("Refresh"):
                 st.rerun()
-        with rc2:
-            et_now = datetime.now(pytz.timezone('US/Eastern'))
-            st.caption(f"Last updated: {et_now.strftime('%Y-%m-%d %H:%M:%S')} ET")
-
+    # Toggle for Report Mode
+    with rc2:
+        et_now = datetime.now(pytz.timezone('US/Eastern'))
+        st.caption(f"Last updated: {et_now.strftime('%Y-%m-%d %H:%M:%S')} ET")
+        c_rm, c_tf = st.columns([1, 1])
+        with c_rm:
+            report_mode = st.toggle("Report Mode", value=False)
+        with c_tf:
+            if report_mode:
+                use_7d = st.toggle("Use 7d Change", value=False)
+            else:
+                use_7d = False
+    
     market_configs = parse_markets_file()
     if not market_configs:
         st.info("Add URLs to markets.txt")
@@ -709,6 +718,7 @@ def main():
             vol24 = float(m.get('volume24h', 0))
             vol_total = float(m.get('volume', 0))
             data.append({
+                "Select": False,
                 "#": m.get('order', 0) + 1,
                 "Event": m['name'],
                 "Details": m['contract'],
@@ -718,7 +728,8 @@ def main():
                 "24h Vol": fmt_vol(vol24),
                 "Total Vol": fmt_vol(vol_total),
                 "Source": f"{m['url']}#{m['source']}",
-                "Copy": f"{m['name']} - {m['contract']}: {m['value']:.0f}% ({m['change_1d']:+.0f}%) - [link]({m['url']})"
+                "Copy": f"{m['name']} - {m['contract']}: {m['value']:.0f}% ({m['change_1d']:+.0f}%) - [link]({m['url']})",
+                "RawURL": m['url']
             })
         df_out = pd.DataFrame(data)
         if not df_out.empty: df_out = df_out.sort_values("#")
@@ -728,28 +739,58 @@ def main():
         color = '#00ff66' if val > 0 else '#ff3344' if val < 0 else '#888'
         return f'color: {color}; font-weight: bold'
 
-    def render_summary_table(target_df):
-        if target_df.empty: return
+    def render_summary_table(target_df, key_suffix, is_report_mode):
+        if target_df.empty: return None
 
-        st.dataframe(
-            target_df.style.map(color_changes, subset=['1d Δ', '7d Δ'])
-                   .format({"Price": "{:.1f}%", "1d Δ": "{:+1.1f}%", "7d Δ": "{:+1.1f}%"}),
-            column_config={
-                "#": st.column_config.NumberColumn("#", format="%d"),
-                "Source": st.column_config.LinkColumn("Source", display_text=r"#(.+)$"),
-                "Event": st.column_config.TextColumn("Event"),
-                "Details": st.column_config.TextColumn("Details"),
-                "Copy": st.column_config.TextColumn("Copy", width="medium")
-            },
-            use_container_width=True,
-            hide_index=True
-        )
+        col_config = {
+            "Select": st.column_config.CheckboxColumn("Select", width="small"),
+            "#": st.column_config.NumberColumn("#", format="%d", width="small"),
+            "Source": st.column_config.LinkColumn("Source", display_text=r"#(.+)$"),
+            "Event": st.column_config.TextColumn("Event"),
+            "Details": st.column_config.TextColumn("Details"),
+            "Copy": st.column_config.TextColumn("Copy", width="medium"),
+            "RawURL": None
+        }
+
+        # Apply styling relative to data type (numeric formatting mainly)
+        # Note: st.data_editor doesn't support Styler objects directly for the input,
+        # but valid dataframe. 
+        # So we lose the "color_changes" conditional formatting in Editor mode unfortunately.
+        # We can keep it in non-edit mode.
+
+        if is_report_mode:
+            # Reorder to put Select first
+            cols = ["Select"] + [c for c in target_df.columns if c != "Select"]
+            target_df = target_df[cols]
+            
+            edited_df = st.data_editor(
+                target_df,
+                column_config=col_config,
+                use_container_width=True,
+                hide_index=True,
+                disabled=[c for c in cols if c != "Select"], # Disable editing everything except Select
+                key=f"editor_{key_suffix}"
+            )
+            return edited_df[edited_df["Select"]]
+        else:
+            # Standard View (No Select Column, colored styles)
+            display_df = target_df.drop(columns=["Select", "RawURL"])
+            st.dataframe(
+                display_df.style.map(color_changes, subset=['1d Δ', '7d Δ'])
+                       .format({"Price": "{:.1f}%", "1d Δ": "{:+1.1f}%", "7d Δ": "{:+1.1f}%"}),
+                column_config=col_config,
+                use_container_width=True,
+                hide_index=True
+            )
+            return None
 
     # Render Tables for each Tab
     display_tabs = ["Finance/Economics", "News", "Etc."]
     
     st.markdown("### Market Summary")
     
+    collected_rows = []
+
     for tab in display_tabs:
         # Filter items for this tab
         tab_items = [m for m in all_items if m['tab'] == tab]
@@ -757,7 +798,57 @@ def main():
         if tab_items:
             st.markdown(f"#### {tab}")
             df_tab = prep_df_data(tab_items)
-            render_summary_table(df_tab)
+            # Pass unique key based on tab
+            selection = render_summary_table(df_tab, tab, report_mode)
+            if selection is not None and not selection.empty:
+                collected_rows.append(selection)
+
+    if report_mode:
+        st.markdown("---")
+        if st.button("Generate Report", type="primary"):
+            if not collected_rows:
+                st.warning("No contracts selected.")
+            else:
+                full_selection = pd.concat(collected_rows)
+                
+                # Group grouping logic
+                # Format: "Event: Contract details..."
+                grouped_text = []
+                
+                # Group by Event Name
+                # We can't use simple groupby if we want to preserve some order, 
+                # but dict preservation works in Python 3.7+
+                events_map = {}
+                for idx, row in full_selection.iterrows():
+                    evt = row['Event']
+                    if evt not in events_map: events_map[evt] = []
+                    events_map[evt].append(row)
+                
+                for evt, rows in events_map.items():
+                    contract_strs = []
+                    for r in rows:
+                        # Contract Name linked to RawURL
+                        # Format: Name Price% (Change%)
+                        name = r['Details']
+                        url = r['RawURL']
+                        price = r['Price']
+                        
+                        # Select change based on toggle
+                        if use_7d:
+                            chg = r['7d Δ']
+                        else:
+                            chg = r['1d Δ']
+                        
+                        chg_str = f" ({chg:+.0f}%)" if chg != 0 else ""
+                        contract_strs.append(f"[{name}]({url}) {price:.0f}%{chg_str}")
+                    
+                    # specific format: "Event: Contract 1; Contract 2"
+                    line = f"**{evt}**: {'; '.join(contract_strs)}"
+                    grouped_text.append(line)
+                
+                final_md = "\n".join(grouped_text)
+                st.success("Report Generated!")
+                st.code(final_md, language="markdown")
 
     
     st.markdown("---")
