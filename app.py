@@ -166,8 +166,9 @@ def apply_custom_style():
             color: #000000 !important;
         }
 
-        /* Toggle Text Styling */
-        div[data-testid="stToggle"] label p {
+        /* Toggle/Checkbox Text Styling */
+        div[data-testid="stToggle"] label p,
+        div[data-testid="stCheckbox"] label p {
             color: var(--bb-accent) !important;
             font-weight: bold !important; 
         }
