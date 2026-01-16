@@ -681,8 +681,15 @@ def main():
     
     filtered_items = []
     for eid, markets in event_groups.items():
-        # Sort by volume descending and take top 3
-        markets.sort(key=lambda x: -x.get('volume', 0))
+        if not markets: continue
+        # Determine sort key based on tab
+        # "Finance/Economics" -> Sort by Price (Value)
+        # "News", "Etc." -> Sort by Volume
+        if markets[0].get('tab') == "Finance/Economics":
+            markets.sort(key=lambda x: -x.get('value', 0))
+        else:
+            markets.sort(key=lambda x: -x.get('volume', 0))
+        
         filtered_items.extend(markets[:3])
     
     # Replace all_items with filtered version
