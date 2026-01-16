@@ -761,10 +761,24 @@ def main():
         if is_report_mode:
             # Reorder to put Select first
             cols = ["Select"] + [c for c in target_df.columns if c != "Select"]
-            target_df = target_df[cols]
+            # Create a display copy to add arrows
+            display_df = target_df[cols].copy()
+            
+            def fmt_arrow(val):
+                if isinstance(val, (int, float)):
+                    if val > 0: return f"🔺 {val:+.0f}%"
+                    if val < 0: return f"🔻 {val:+.0f}%"
+                    return f"{val:.0f}%"
+                return val
+
+            # Apply formatting to delta columns for visual feedback in Editor
+            if '1d Δ' in display_df.columns:
+                display_df['1d Δ'] = display_df['1d Δ'].apply(fmt_arrow)
+            if '7d Δ' in display_df.columns:
+                display_df['7d Δ'] = display_df['7d Δ'].apply(fmt_arrow)
             
             edited_df = st.data_editor(
-                target_df,
+                display_df,
                 column_config=col_config,
                 use_container_width=True,
                 hide_index=True,
@@ -835,30 +849,27 @@ def main():
                         
                         # Select change based on toggle
                         if use_7d:
-                            chg = r['7d Δ']
+                            chg_val = r['7d Δ']
                         else:
-                            chg = r['1d Δ']
+                            chg_val = r['1d Δ']
                         
-                        # Apply custom color formatting
-                        if chg > 0:
-                            chg_str = f"<span style='color:#00ff66'>({chg:+.0f}%)</span>"
-                        elif chg < 0:
-                            chg_str = f"<span style='color:#ff3344'>({chg:+.0f}%)</span>"
+                        # If the value is a string (arrow formatted), use it directly
+                        # If it's a number (fallback), format it
+                        if isinstance(chg_val, str):
+                            chg_str = f" ({chg_val})"
                         else:
-                            chg_str = ""
+                            chg_str = f" ({chg_val:+.0f}%)" if chg_val != 0 else ""
                             
                         # Format: [Name](URL) Price% (Change%)
-                        # Note: We add a space before chg_str if it exists
-                        spacer = " " if chg_str else ""
-                        contract_strs.append(f"[{name}]({url}) {price:.0f}%{spacer}{chg_str}")
+                        contract_strs.append(f"[{name}]({url}) {price:.0f}%{chg_str}")
                     
                     # specific format: "Event: Contract 1; Contract 2"
-                    line = f"**{evt}**: {'; '.join(contract_strs)}  " # Trailing spaces for MD break
+                    line = f"**{evt}**: {'; '.join(contract_strs)}"
                     grouped_text.append(line)
                 
                 final_md = "\n".join(grouped_text)
                 st.success("Report Generated!")
-                st.markdown(final_md, unsafe_allow_html=True)
+                st.code(final_md, language="markdown")
 
     
     st.markdown("---")
