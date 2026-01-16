@@ -764,18 +764,18 @@ def main():
             # Create a display copy to add arrows
             display_df = target_df[cols].copy()
             
-            def fmt_arrow(val):
+            def fmt_change(val):
                 if isinstance(val, (int, float)):
-                    if val > 0: return f"🔺 {val:+.0f}%"
-                    if val < 0: return f"🔻 {val:+.0f}%"
+                    if val > 0: return f"🟢 {val:+.0f}%"
+                    if val < 0: return f"🔴 {val:+.0f}%"
                     return f"{val:.0f}%"
                 return val
 
             # Apply formatting to delta columns for visual feedback in Editor
             if '1d Δ' in display_df.columns:
-                display_df['1d Δ'] = display_df['1d Δ'].apply(fmt_arrow)
+                display_df['1d Δ'] = display_df['1d Δ'].apply(fmt_change)
             if '7d Δ' in display_df.columns:
-                display_df['7d Δ'] = display_df['7d Δ'].apply(fmt_arrow)
+                display_df['7d Δ'] = display_df['7d Δ'].apply(fmt_change)
             
             edited_df = st.data_editor(
                 display_df,
@@ -853,10 +853,10 @@ def main():
                         else:
                             chg_val = r['1d Δ']
                         
-                        # If the value is a string (arrow formatted), use it directly
-                        # If it's a number (fallback), format it
+                        # Clean up for text-only output (remove dots)
                         if isinstance(chg_val, str):
-                            chg_str = f" ({chg_val})"
+                            clean_val = chg_val.replace('🟢', '').replace('🔴', '').strip()
+                            chg_str = f" ({clean_val})" if clean_val != "0%" else ""
                         else:
                             chg_str = f" ({chg_val:+.0f}%)" if chg_val != 0 else ""
                             
