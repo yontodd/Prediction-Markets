@@ -839,16 +839,26 @@ def main():
                         else:
                             chg = r['1d Δ']
                         
-                        chg_str = f" ({chg:+.0f}%)" if chg != 0 else ""
-                        contract_strs.append(f"[{name}]({url}) {price:.0f}%{chg_str}")
+                        # Apply custom color formatting
+                        if chg > 0:
+                            chg_str = f"<span style='color:#00ff66'>({chg:+.0f}%)</span>"
+                        elif chg < 0:
+                            chg_str = f"<span style='color:#ff3344'>({chg:+.0f}%)</span>"
+                        else:
+                            chg_str = ""
+                            
+                        # Format: [Name](URL) Price% (Change%)
+                        # Note: We add a space before chg_str if it exists
+                        spacer = " " if chg_str else ""
+                        contract_strs.append(f"[{name}]({url}) {price:.0f}%{spacer}{chg_str}")
                     
                     # specific format: "Event: Contract 1; Contract 2"
-                    line = f"**{evt}**: {'; '.join(contract_strs)}"
+                    line = f"**{evt}**: {'; '.join(contract_strs)}  " # Trailing spaces for MD break
                     grouped_text.append(line)
                 
                 final_md = "\n".join(grouped_text)
                 st.success("Report Generated!")
-                st.code(final_md, language="markdown")
+                st.markdown(final_md, unsafe_allow_html=True)
 
     
     st.markdown("---")
