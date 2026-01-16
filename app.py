@@ -165,6 +165,12 @@ def apply_custom_style():
             background-color: var(--bb-accent) !important;
             color: #000000 !important;
         }
+
+        /* Toggle Text Styling */
+        div[data-testid="stToggle"] label p {
+            color: var(--bb-accent) !important;
+            font-weight: bold !important; 
+        }
         </style>
     """, unsafe_allow_html=True)
 
