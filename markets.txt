@@ -1,5 +1,6 @@
 [Finance/Economics]
 [Tariffs]
+https://polymarket.com/event/tariff-increase-on-canada-in-effect-by-june-30
 https://kalshi.com/markets/kxdjtvostariffs/tariffs-case/kxdjtvostariffs
 
 [Federal Reserve - Meetings]
@@ -21,6 +22,7 @@ https://polymarket.com/event/which-company-has-best-ai-model-end-of-june?tid=176
 https://kalshi.com/markets/kxoaiagi/openai-achieves-agi/oaiagi
 
 [US Politics]
+https://kalshi.com/markets/kxgovshut/government-shutdown/kxgovshut-26jan31
 https://kalshi.com/markets/kxtariffchecks/will-americans-receive-tariff-dividends-in-2025/kxtariffchecks-26
 https://polymarket.com/event/will-the-supreme-court-rule-in-favor-of-trumps-tariffs?tid=1767030935914
 https://kalshi.com/markets/controlh/house-winner/controlh-2026
