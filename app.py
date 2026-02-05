@@ -874,8 +874,10 @@ def main():
                         # Format: Name Price% (Change%)
                         contract_strs.append(f"{name} {price:.0f}%{chg_str}")
                     
-                    # specific format: "**[Event Title](URL)**: Contract 1; Contract 2"
-                    line = f"**[{evt}]({evt_url})**: {'; '.join(contract_strs)}"
+                    # specific format: "**[Event Title](URL)**: \nContract 1\nContract 2"
+                    # User requested line breaks. Let's use a clean list style.
+                    # Or just simple breaks. "Contract 1;\nContract 2"
+                    line = f"**[{evt}]({evt_url})**:\n" + "\n".join(contract_strs)
                     grouped_text.append(line)
                 
                 final_md = "\n".join(grouped_text)
