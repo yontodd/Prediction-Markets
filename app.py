@@ -717,7 +717,7 @@ def main():
     # Sort all_items by original order from markets.txt -> then by Price (Value) descending
     all_items.sort(key=lambda x: (x.get('order', 0), -x.get('value', 0)))
 
-    def prep_df_data(items):
+    def prep_df_data(items, default_select=False):
         def fmt_vol(v):
             if v >= 1_000_000: return f"${v/1_000_000:.1f}M"
             if v >= 1_000: return f"${v/1_000:.1f}k"
@@ -728,7 +728,7 @@ def main():
             vol24 = float(m.get('volume24h', 0))
             vol_total = float(m.get('volume', 0))
             data.append({
-                "Select": False,
+                "Select": default_select,
                 "#": m.get('order', 0) + 1,
                 "Event": m['name'],
                 "Details": m['contract'],
@@ -819,7 +819,7 @@ def main():
         
         if tab_items:
             st.markdown(f"#### {tab}")
-            df_tab = prep_df_data(tab_items)
+            df_tab = prep_df_data(tab_items, default_select=report_mode)
             # Pass unique key based on tab
             selection = render_summary_table(df_tab, tab, report_mode)
             if selection is not None and not selection.empty:
@@ -847,12 +847,15 @@ def main():
                     events_map[evt].append(row)
                 
                 for evt, rows in events_map.items():
+                    # Get URL from the first row (assuming all in group have same URL/EventID)
+                    first_row = rows[0]
+                    evt_url = first_row['RawURL']
+                    
                     contract_strs = []
                     for r in rows:
                         # Contract Name linked to RawURL
                         # Format: Name Price% (Change%)
                         name = r['Details']
-                        url = r['RawURL']
                         price = r['Price']
                         
                         # Select change based on toggle
@@ -868,11 +871,11 @@ def main():
                         else:
                             chg_str = f" ({chg_val:+.0f}%)" if chg_val != 0 else ""
                             
-                        # Format: [Name](URL) Price% (Change%)
-                        contract_strs.append(f"[{name}]({url}) {price:.0f}%{chg_str}")
+                        # Format: Name Price% (Change%)
+                        contract_strs.append(f"{name} {price:.0f}%{chg_str}")
                     
-                    # specific format: "Event: Contract 1; Contract 2"
-                    line = f"**{evt}**: {'; '.join(contract_strs)}"
+                    # specific format: "**[Event Title](URL)**: Contract 1; Contract 2"
+                    line = f"**[{evt}]({evt_url})**: {'; '.join(contract_strs)}"
                     grouped_text.append(line)
                 
                 final_md = "\n".join(grouped_text)
