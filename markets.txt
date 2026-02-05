@@ -1,31 +1,30 @@
 [Finance/Economics]
-[Tariffs]
-https://polymarket.com/event/tariff-increase-on-canada-in-effect-by-june-30
-https://kalshi.com/markets/kxdjtvostariffs/tariffs-case/kxdjtvostariffs
-
-[Federal Reserve - Meetings]
-https://polymarket.com/event/fed-decision-in-january
+[Fed/Economy]
 https://polymarket.com/event/fed-decision-in-march-885
 https://polymarket.com/event/fed-decision-in-april
 https://polymarket.com/event/fed-decision-in-june-825
 https://polymarket.com/event/how-many-fed-rate-cuts-in-2026
-
-[Federal Reserve - Leadership]
-https://polymarket.com/event/who-will-trump-nominate-as-fed-chair
-https://kalshi.com/markets/kxleavepowellgov/jerome-powell-leave-as-fed-governor/kxleavepowellgov-26aug01
+https://polymarket.com/event/fed-rate-hike-in-2026  
 https://kalshi.com/markets/kxleavepowell/powell-leaving/leavepowell-25
+https://kalshi.com/markets/kxleavepowellgov/jerome-powell-leave-as-fed-governor/kxleavepowellgov-26aug01
 https://kalshi.com/markets/kxleavelisacook/will-lisa-cook-leave-office/kxleavelisacook-26jan
+https://polymarket.com/event/kevin-warsh-confirmed-as-fed-chair-by-may-15
+https://kalshi.com/markets/kxfedchairconfirmed/will-trumps-fed-chair-pick-be-confirmed/kxfedchairconfirmed
+https://kalshi.com/markets/kxfedleadjune/who-will-chair-the-june-fomc-meeting/kxfedleadjune-26jun17
+https://polymarket.com/event/us-recession-by-end-of-2026
 
 [News]
 [AI]
 https://polymarket.com/event/which-company-has-best-ai-model-end-of-june?tid=1767889847956
 https://kalshi.com/markets/kxoaiagi/openai-achieves-agi/oaiagi
+https://polymarket.com/event/ai-bubble-burst-by
 
 [US Politics]
-https://polymarket.com/event/how-long-will-the-next-government-shutdown-last
 https://kalshi.com/markets/kxtariffchecks/will-americans-receive-tariff-dividends-in-2025/kxtariffchecks-26
 https://polymarket.com/event/will-the-supreme-court-rule-in-favor-of-trumps-tariffs?tid=1767030935914
+https://kalshi.com/markets/kxdhsfunding/when-will-dhs-receive-fullyear-funding/kxdhsfunding
 https://kalshi.com/markets/controlh/house-winner/controlh-2026
+https://polymarket.com/event/another-us-government-shutdown-by-february-14
 
 [Military/Geopolitics]
 https://polymarket.com/event/us-strikes-iran-by
@@ -34,17 +33,22 @@ https://polymarket.com/event/another-us-strike-on-venezuela-by
 https://polymarket.com/event/us-strike-on-mexico-by?tid=1767793976825
 https://polymarket.com/event/us-strike-on-cuba-by?tid=1767714495634
 https://polymarket.com/event/us-strike-on-colombia-by-january-31?tid=1767794247321
+https://polymarket.com/event/next-country-us-strikes-329
 https://kalshi.com/markets/kxgreenterritory/greenland-acquisition/kxgreenterritory-29
 https://polymarket.com/event/will-trump-acquire-greenland-before-2027?tid=1767887361869
 https://polymarket.com/event/will-the-us-invade-greenland-in-2026?tid=1767893937789
 https://kalshi.com/markets/kxcanal/panama-canal-retaken/kxcanal-29
 https://polymarket.com/event/khamenei-out-as-supreme-leader-of-iran-by-june-30-747
+https://polymarket.com/event/khamenei-out-as-supreme-leader-of-iran-by-june-30-747
 https://polymarket.com/event/will-china-invade-taiwan-before-2027?tid=1767030127053
+https://polymarket.com/event/tariff-increase-on-canada-in-effect-by-june-30
+https://polymarket.com/event/miguel-daz-canel-out-as-leader-of-cuba-by-june-30
 
 [Etc.]
 [Sports/Entertainment/Culture/Misc.]
-https://kalshi.com/markets/kxncaaf/ncaaf-championship/kxncaaf-26
 https://polymarket.com/event/oscars-2026-best-picture-winner?tid=1767376926353
-https://kalshi.com/markets/kxnflnfcchamp/national-football-conference-champion/kxnflnfcchamp-25
-https://kalshi.com/markets/kxnflafcchamp/american-football-conference-champion/kxnflafcchamp-25
+https://kalshi.com/markets/kxsb/super-bowl/kxsb-26
+https://kalshi.com/markets/kxfirstsuperbowlsong/what-will-be-the-first-super-bowl-song-played-during-halfitme/kxfirstsuperbowlsong-26feb09
+
 https://kalshi.com/markets/kxnflmvp/ap-pro-football-regular-season-mvp/kxnflmvp-26
+https://kalshi.com/markets/kxnextteamgiannis/giannis-next-team/kxnextteamgiannis-26gant
