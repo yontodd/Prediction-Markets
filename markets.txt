@@ -25,6 +25,7 @@ https://polymarket.com/event/will-the-supreme-court-rule-in-favor-of-trumps-tari
 https://kalshi.com/markets/kxdhsfunding/when-will-dhs-receive-fullyear-funding/kxdhsfunding
 https://kalshi.com/markets/controlh/house-winner/controlh-2026
 https://polymarket.com/event/another-us-government-shutdown-by-february-14
+https://kalshi.com/markets/kxgovtshutlength/how-long-will-the-next-government-shutdown-last/kxgovtshutlength-26feb07
 
 [Military/Geopolitics]
 https://polymarket.com/event/us-strikes-iran-by
@@ -33,7 +34,6 @@ https://polymarket.com/event/another-us-strike-on-venezuela-by
 https://polymarket.com/event/us-strike-on-mexico-by?tid=1767793976825
 https://polymarket.com/event/us-strike-on-cuba-by?tid=1767714495634
 https://polymarket.com/event/us-strike-on-colombia-by-january-31?tid=1767794247321
-https://polymarket.com/event/next-country-us-strikes-329
 https://kalshi.com/markets/kxgreenterritory/greenland-acquisition/kxgreenterritory-29
 https://polymarket.com/event/will-trump-acquire-greenland-before-2027?tid=1767887361869
 https://polymarket.com/event/will-the-us-invade-greenland-in-2026?tid=1767893937789
